@@ -1,0 +1,1462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tempest Windows • Job Estimator</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                orange: 'rgb(var(--c-primary) / <alpha-value>)',
+                orangeLight: 'rgb(var(--c-primary-light) / <alpha-value>)',
+                orangeAccent: 'rgb(var(--c-primary-accent) / <alpha-value>)',
+                navy: 'rgb(var(--c-secondary) / <alpha-value>)',
+                navyDeep: 'rgb(var(--c-secondary-deep) / <alpha-value>)',
+                section: 'rgb(var(--c-section) / <alpha-value>)',
+                grey: '#666666',
+                greyBg: '#F2F4F7',
+                greyBorder: '#8A94A6',
+                red: '#C8102E',
+              },
+            },
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Default to Tempest theme — JS will overwrite for other themes */
+        --c-primary: 230 145 56;
+        --c-primary-light: 246 178 107;
+        --c-primary-accent: 255 153 0;
+        --c-secondary: 31 58 95;
+        --c-secondary-deep: 15 36 64;
+        --c-section: 38 38 38;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+      }
+      body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c7cdd6;
+        border-radius: 8px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #404040;
+      }
+      input[type='number']::-webkit-outer-spin-button,
+      input[type='number']::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type='number'] {
+        -moz-appearance: textfield;
+      }
+      .device-mobile {
+        width: 390px;
+        max-width: 100%;
+        margin: 0 auto;
+        border-radius: 32px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 8px #1a1a1a,
+          0 30px 60px -20px rgba(0, 0, 0, 0.5);
+      }
+      .device-mobile .device-shell {
+        max-height: 780px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body class="bg-brand-greyBg dark:bg-neutral-950 transition-colors duration-200">
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+      const { useState, useMemo, useEffect, useCallback, useRef, Fragment } = React;
+
+      // ---- Color themes -------------------------------------------------
+      // Values are space-separated RGB triplets so Tailwind opacity modifiers
+      // (e.g. bg-brand-orange/15) keep working via rgb(var(--x) / <alpha-value>).
+      const THEMES = {
+        tempest: {
+          name: 'Tempest',
+          swatch: '#E69138',
+          vars: {
+            '--c-primary': '230 145 56',
+            '--c-primary-light': '246 178 107',
+            '--c-primary-accent': '255 153 0',
+            '--c-secondary': '31 58 95',
+            '--c-secondary-deep': '15 36 64',
+            '--c-section': '38 38 38',
+          },
+        },
+        ocean: {
+          name: 'Ocean',
+          swatch: '#0EA5E9',
+          vars: {
+            '--c-primary': '14 165 233',
+            '--c-primary-light': '125 211 252',
+            '--c-primary-accent': '6 182 212',
+            '--c-secondary': '15 23 42',
+            '--c-secondary-deep': '2 6 23',
+            '--c-section': '12 74 110',
+          },
+        },
+        forest: {
+          name: 'Forest',
+          swatch: '#10B981',
+          vars: {
+            '--c-primary': '16 185 129',
+            '--c-primary-light': '110 231 183',
+            '--c-primary-accent': '5 150 105',
+            '--c-secondary': '20 83 45',
+            '--c-secondary-deep': '5 46 22',
+            '--c-section': '6 78 59',
+          },
+        },
+        sunset: {
+          name: 'Sunset',
+          swatch: '#F43F5E',
+          vars: {
+            '--c-primary': '244 63 94',
+            '--c-primary-light': '253 164 175',
+            '--c-primary-accent': '236 72 153',
+            '--c-secondary': '76 5 25',
+            '--c-secondary-deep': '67 6 22',
+            '--c-section': '131 24 67',
+          },
+        },
+        royal: {
+          name: 'Royal',
+          swatch: '#7C3AED',
+          vars: {
+            '--c-primary': '124 58 237',
+            '--c-primary-light': '196 181 253',
+            '--c-primary-accent': '139 92 246',
+            '--c-secondary': '49 46 129',
+            '--c-secondary-deep': '30 27 75',
+            '--c-section': '55 48 163',
+          },
+        },
+        monochrome: {
+          name: 'Monochrome',
+          swatch: '#171717',
+          vars: {
+            // Deep charcoal palette — much darker greys for a true B&W feel.
+            '--c-primary': '64 64 64',
+            '--c-primary-light': '90 90 90',
+            '--c-primary-accent': '38 38 38',
+            '--c-secondary': '23 23 23',
+            '--c-secondary-deep': '10 10 10',
+            '--c-section': '0 0 0',
+          },
+        },
+      };
+
+      // --------------------------------------------------------------------
+      // Pricing data, extracted exactly from JOB ESTIMATOR MASTER.xlsx
+      // --------------------------------------------------------------------
+      const COLORS = [
+        { key: 'WB', label: 'White / Beige', multiplier: 1.0 },
+        { key: 'DC', label: 'Desert Clay', multiplier: 1.1 },
+        { key: 'BB', label: 'Black / Bronze', multiplier: 1.25 },
+      ];
+
+      // Mezzo — tiers 1-9 / 10-19 / 20+
+      const MEZZO = [
+        { id: 'mz-dh', label: 'Double Hung', tiers: [2117.5, 2057.0, 1996.5], size: '12"–50" W × 20"–72" H' },
+        { id: 'mz-2ls', label: '2 Lite Slider', tiers: [2117.5, 2057.0, 1996.5], size: '18.5"–96" W × 11.25"–72" H' },
+        { id: 'mz-pic', label: 'Picture', tiers: [2117.5, 2057.0, 1996.5], size: '47.5"–120" W × 11.25"–72" H' },
+        { id: 'mz-pic120', label: 'Picture >120', tiers: [3025.0, 2873.75, 2722.5], size: '> 120 UI' },
+        { id: 'mz-3ls', label: '3 Lite Slider', tiers: [3025.0, 2873.75, 2722.5], size: '12"–112" W × Up to 108" H' },
+        { id: 'mz-spec', label: 'Specialty', tiers: [2450.25, 2450.25, 2450.25], size: 'Up to 154 UI' },
+        { id: 'mz-specsh', label: 'Specialty SH', tiers: [4204.75, 4204.75, 4204.75], size: '23.5"–47" W × 43"–96" H' },
+        { id: 'mz-spec101', label: 'Specialty >101', tiers: [3781.25, 3781.25, 3781.25], size: '> 101 UI' },
+      ];
+
+      // Casement / Awning — tiers 1-14 / 15+
+      const CASEMENT = [
+        { id: 'ca-cas', label: 'Casement', tiers: [2208.25, 2147.75], size: '14.5"–34" W × 18"–86" H' },
+        { id: 'ca-awn', label: 'Awning', tiers: [2208.25, 2147.75], size: '14.5"–58" W × 14.5"–34" H' },
+        { id: 'ca-2lc', label: '2L Casement', tiers: [3297.25, 3176.25], size: '47.5"–120" W × 47.5"–96" H' },
+        { id: 'ca-3lc', label: '3L Casement', tiers: [6745.75, 6564.25], size: '71.5"–130" W × 47.5"–96" H' },
+        { id: 'ca-4lc', label: '4L Casement', tiers: [8167.5, 8046.5], size: '95.5"–144" W × 47.5"–96" H' },
+        { id: 'ca-5lc', label: '5L Casement', tiers: [9256.5, 9135.5], size: 'Custom multi-lite' },
+      ];
+
+      // Fusion — tiers 1-14 / 15+
+      const FUSION = [
+        { id: 'fu-dh', label: 'Double Hung', tiers: [1603.25, 1542.75], size: '9.5"–86" W × 9.5"–86" H' },
+        { id: 'fu-2ls', label: '2 Lite Slider', tiers: [1603.25, 1542.75], size: '27"–84" W × 13.5"–42" H' },
+        { id: 'fu-pic', label: 'Picture', tiers: [1603.25, 1542.75], size: '27"–47" W × 43"–96" H' },
+        { id: 'fu-pic120', label: 'Picture >120', tiers: [2752.75, 2692.25], size: '> 120 UI' },
+        { id: 'fu-3ls', label: '3 Lite Slider', tiers: [2752.75, 2692.25], size: 'Tri-pane configuration' },
+      ];
+
+      // Patio doors — flat price per unit
+      const PATIO = [
+        { id: 'pd-5', label: "5' Patio Door", price: 4991.25 },
+        { id: 'pd-6', label: "6' Patio Door", price: 5626.5 },
+        { id: 'pd-8', label: "6'2\" – 8' Patio Door", price: 7683.5 },
+        { id: 'pd-9', label: "9' Patio Door", price: 9528.75 },
+        { id: 'pd-12', label: "12' Patio Door", price: 11525.25 },
+      ];
+
+      // Additional options — flat price, no color/tier impact
+      const OPTIONS = [
+        { id: 'op-temp', label: 'Tempered', price: 242.0 },
+        { id: 'op-htemp', label: '1/2 Tempered', price: 121.0 },
+        { id: 'op-obs', label: 'Obscure', price: 121.0 },
+        { id: 'op-rain', label: 'Rain', price: 121.0 },
+        { id: 'op-glue', label: 'Glue Chip', price: 423.5 },
+        { id: 'op-satin', label: 'Satin', price: 423.5 },
+        { id: 'op-grids', label: 'Grids', price: 108.9 },
+        { id: 'op-tp', label: 'Triple Pane', price: 151.25 },
+        { id: 'op-tp101', label: 'Triple Pane >101', price: 211.75 },
+        { id: 'op-diff', label: 'Difficult Install', price: 121.0 },
+        { id: 'op-gbr', label: 'Glass Block Removal', price: 363.0 },
+        { id: 'op-sill', label: 'New Sill', price: 84.7 },
+        { id: 'op-scbw', label: 'Solar Cool Bronze Window', price: 423.5 },
+        { id: 'op-scbd', label: 'Solar Cool Bronze Patio Door', price: 1179.75 },
+        { id: 'op-fscr', label: 'Full Screen', price: 108.9 },
+      ];
+
+      // Volume-tier item groups (count toward TOTAL UNITS)
+      // tierType:
+      //   'mezzo'       — color multiplier + Mezzo volume tiers (1-9 / 10-19 / 20+)
+      //   'casement'    — color multiplier + Casement/Fusion volume tiers (1-14 / 15+)
+      //   'flat-color'  — color multiplier, no volume tier (Patio Doors)
+      //   'flat'        — no color, no volume tier (Additional Options)
+      const ALL_PRIMARY = [
+        ...MEZZO.map((w) => ({ ...w, family: 'Mezzo', tierType: 'mezzo' })),
+        ...CASEMENT.map((w) => ({ ...w, family: 'Casement / Awning', tierType: 'casement' })),
+        ...FUSION.map((w) => ({ ...w, family: 'Fusion', tierType: 'casement' })),
+        ...PATIO.map((w) => ({ ...w, family: 'Patio Doors', tierType: 'flat-color' })),
+      ];
+
+      const ITEM_BY_ID = Object.fromEntries(
+        [...ALL_PRIMARY, ...OPTIONS.map((o) => ({ ...o, family: 'Add-on', tierType: 'flat' }))].map((i) => [i.id, i]),
+      );
+
+      // Tier resolution. Mezzo: 1-9 / 10-19 / 20+. Casement+Fusion: 1-14 / 15+.
+      function tierIndex(totalUnits, tierType) {
+        if (tierType === 'mezzo') {
+          if (totalUnits <= 9) return 0;
+          if (totalUnits <= 19) return 1;
+          return 2;
+        }
+        if (tierType === 'casement') {
+          if (totalUnits <= 14) return 0;
+          return 1;
+        }
+        return 0;
+      }
+
+      function tierLabel(totalUnits) {
+        if (totalUnits <= 0) return '— enter quantities —';
+        if (totalUnits <= 9) return '1–9 (Mezzo)   •   1–14 (Fusion / Casement)';
+        if (totalUnits <= 14) return '10–19 (Mezzo)   •   1–14 (Fusion / Casement)';
+        if (totalUnits <= 19) return '10–19 (Mezzo)   •   15+ (Fusion / Casement)';
+        return '20+ (Mezzo)   •   15+ (Fusion / Casement)';
+      }
+
+      // Per-line price (color split is qty × color multiplier × base)
+      function linePrice(item, qty, colorKey, totalUnits) {
+        if (!item || !qty) return 0;
+        const mult = (COLORS.find((c) => c.key === colorKey) || COLORS[0]).multiplier;
+        if (item.tierType === 'flat') return qty * item.price;
+        if (item.tierType === 'flat-color') return qty * mult * item.price;
+        const base = item.tiers[tierIndex(totalUnits, item.tierType)];
+        return qty * mult * base;
+      }
+
+      // Gross line price — flat items at their price, tiered items at the tier-1 (1–9 / 1–14) rate.
+      // This is the pre-volume-discount subtotal used to surface "Volume Savings."
+      function lineSubtotalGross(item, qty, colorKey) {
+        if (!item || !qty) return 0;
+        if (item.tierType === 'flat') return qty * item.price;
+        const mult = (COLORS.find((c) => c.key === colorKey) || COLORS[0]).multiplier;
+        if (item.tierType === 'flat-color') return qty * mult * item.price;
+        return qty * mult * item.tiers[0];
+      }
+
+      const fmt = (n) =>
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2,
+        }).format(n || 0);
+
+      // --------------------------------------------------------------------
+      // Reusable UI primitives
+      // --------------------------------------------------------------------
+      function Toggle({ value, options, onChange, ariaLabel }) {
+        return (
+          <div
+            role="tablist"
+            aria-label={ariaLabel}
+            className="inline-flex rounded-full bg-slate-200/80 dark:bg-neutral-800 p-1 text-xs font-semibold"
+          >
+            {options.map((opt) => {
+              const active = value === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => onChange(opt.value)}
+                  className={
+                    'px-3 py-1.5 rounded-full transition-all whitespace-nowrap ' +
+                    (active
+                      ? 'bg-white dark:bg-neutral-950 text-brand-orange shadow-sm'
+                      : 'text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white')
+                  }
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+
+      function Card({ children, className = '' }) {
+        return (
+          <div
+            className={
+              'rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm ' +
+              className
+            }
+          >
+            {children}
+          </div>
+        );
+      }
+
+      function Pill({ children, tone = 'orange' }) {
+        const tones = {
+          orange: 'bg-brand-orange/10 text-brand-orange ring-1 ring-brand-orange/30',
+          grey: 'bg-slate-200 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300',
+          navy: 'bg-brand-navy/10 text-brand-navy dark:text-brand-orangeLight ring-1 ring-brand-navy/30',
+        };
+        return (
+          <span className={'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ' + tones[tone]}>
+            {children}
+          </span>
+        );
+      }
+
+      // --------------------------------------------------------------------
+      // Header
+      // --------------------------------------------------------------------
+      function ZoomControl({ zoom, onZoomIn, onZoomOut, onZoomReset }) {
+        return (
+          <div className="inline-flex items-center rounded-full bg-slate-200/80 dark:bg-neutral-800 p-1 text-xs font-semibold">
+            <button
+              onClick={onZoomOut}
+              className="w-8 h-7 rounded-full flex items-center justify-center text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors"
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+                <path d="M8 11h6" />
+              </svg>
+            </button>
+            <button
+              onClick={onZoomReset}
+              className="px-2 h-7 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors tabular-nums min-w-[3.25rem]"
+              aria-label="Reset zoom"
+              title="Reset zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={onZoomIn}
+              className="w-8 h-7 rounded-full flex items-center justify-center text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors"
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+                <path d="M8 11h6" />
+                <path d="M11 8v6" />
+              </svg>
+            </button>
+          </div>
+        );
+      }
+
+      function SwitchRow({ label, checked, onChange }) {
+        return (
+          <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+            <span className="text-sm font-medium text-slate-700 dark:text-neutral-200">{label}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={checked}
+              onClick={() => onChange(!checked)}
+              className={
+                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors ' +
+                (checked ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-neutral-700')
+              }
+            >
+              <span
+                className={
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ' +
+                  (checked ? 'translate-x-4' : 'translate-x-0.5')
+                }
+              />
+            </button>
+          </label>
+        );
+      }
+
+      function SettingsMenu({
+        theme,
+        setTheme,
+        colorTheme,
+        setColorTheme,
+        zoom,
+        onZoomIn,
+        onZoomOut,
+        onZoomReset,
+        density,
+        setDensity,
+        showTierHint,
+        setShowTierHint,
+        stickyTotals,
+        setStickyTotals,
+      }) {
+        const [open, setOpen] = useState(false);
+        const wrapRef = useRef(null);
+
+        useEffect(() => {
+          if (!open) return;
+          function handleDocClick(e) {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+          }
+          function handleEsc(e) {
+            if (e.key === 'Escape') setOpen(false);
+          }
+          document.addEventListener('mousedown', handleDocClick);
+          document.addEventListener('keydown', handleEsc);
+          return () => {
+            document.removeEventListener('mousedown', handleDocClick);
+            document.removeEventListener('keydown', handleEsc);
+          };
+        }, [open]);
+
+        return (
+          <div ref={wrapRef} className="relative">
+            <button
+              onClick={() => setOpen((o) => !o)}
+              className={
+                'w-9 h-9 rounded-full flex items-center justify-center transition-all ring-1 ' +
+                (open
+                  ? 'bg-white text-brand-orange ring-white shadow-sm'
+                  : 'bg-white/15 text-white ring-white/30 hover:bg-white/25')
+              }
+              aria-label="Settings"
+              aria-expanded={open}
+              title="Settings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+
+            {open && (
+              <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-2xl bg-white dark:bg-neutral-900 text-slate-800 dark:text-neutral-100 shadow-xl ring-1 ring-slate-200 dark:ring-neutral-700 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-200 dark:border-neutral-800 flex items-center justify-between">
+                  <div className="font-bold text-sm tracking-tight">Settings</div>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-lg leading-none"
+                    aria-label="Close settings"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="px-4 py-3 space-y-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                      Mode
+                    </div>
+                    <Toggle
+                      ariaLabel="Mode"
+                      value={theme}
+                      onChange={setTheme}
+                      options={[
+                        { value: 'light', label: 'Light' },
+                        { value: 'dark', label: 'Dark' },
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                      Theme
+                    </div>
+                    <div className="grid grid-cols-6 gap-1.5 mb-2">
+                      {Object.entries(THEMES).map(([key, t]) => {
+                        const active = colorTheme === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setColorTheme(key)}
+                            className={
+                              'h-9 rounded-lg ring-1 transition-all flex items-center justify-center ' +
+                              (active
+                                ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-neutral-900 ring-current scale-105'
+                                : 'ring-slate-200 dark:ring-neutral-700 hover:scale-105')
+                            }
+                            style={{ backgroundColor: t.swatch, color: t.swatch }}
+                            aria-label={t.name}
+                            title={t.name}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-700 dark:text-neutral-200">
+                      {(THEMES[colorTheme] || THEMES.tempest).name}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                      Zoom
+                    </div>
+                    <ZoomControl
+                      zoom={zoom}
+                      onZoomIn={onZoomIn}
+                      onZoomOut={onZoomOut}
+                      onZoomReset={onZoomReset}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                      Density
+                    </div>
+                    <Toggle
+                      ariaLabel="Density"
+                      value={density}
+                      onChange={setDensity}
+                      options={[
+                        { value: 'compact', label: 'Compact' },
+                        { value: 'comfortable', label: 'Comfortable' },
+                      ]}
+                    />
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200 dark:border-neutral-800 space-y-2.5">
+                    <SwitchRow
+                      label="Show volume-tier hints"
+                      checked={showTierHint}
+                      onChange={setShowTierHint}
+                    />
+                    <SwitchRow
+                      label="Sticky totals while scrolling"
+                      checked={stickyTotals}
+                      onChange={setStickyTotals}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function Header({
+        view,
+        setView,
+        theme,
+        setTheme,
+        colorTheme,
+        setColorTheme,
+        zoom,
+        onZoomIn,
+        onZoomOut,
+        onZoomReset,
+        density,
+        setDensity,
+        showTierHint,
+        setShowTierHint,
+        stickyTotals,
+        setStickyTotals,
+      }) {
+        return (
+          <header className="bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-white">
+            <div className="px-3 sm:px-8 py-3 sm:py-4 flex flex-row items-center gap-3 sm:gap-6">
+              <div className="leading-tight min-w-0 flex-shrink">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold tracking-tight truncate">
+                  Tempest Windows
+                </h1>
+                <div className="text-xs sm:text-sm md:text-base font-medium text-white/85 mt-0.5 truncate">
+                  Job Estimator
+                </div>
+              </div>
+
+              <div className="flex-1" />
+
+              <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
+                <Toggle
+                  ariaLabel="View"
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: 'pricing', label: 'Pricing Tool' },
+                    { value: 'catalog', label: 'Catalog' },
+                  ]}
+                />
+                <SettingsMenu
+                  theme={theme}
+                  setTheme={setTheme}
+                  colorTheme={colorTheme}
+                  setColorTheme={setColorTheme}
+                  zoom={zoom}
+                  onZoomIn={onZoomIn}
+                  onZoomOut={onZoomOut}
+                  onZoomReset={onZoomReset}
+                  density={density}
+                  setDensity={setDensity}
+                  showTierHint={showTierHint}
+                  setShowTierHint={setShowTierHint}
+                  stickyTotals={stickyTotals}
+                  setStickyTotals={setStickyTotals}
+                />
+              </div>
+            </div>
+          </header>
+        );
+      }
+
+      // --------------------------------------------------------------------
+      // Pricing Tool
+      // --------------------------------------------------------------------
+      const BLANK_FORM = { itemId: '', qty: '', colorKey: 'WB' };
+
+      function PricingTool({
+        form,
+        setForm,
+        lines,
+        setLines,
+        resetTick,
+        setResetTick,
+        density = 'comfortable',
+        showTierHint = true,
+        stickyTotals = false,
+      }) {
+        const blank = BLANK_FORM;
+        const compact = density === 'compact';
+        const d = {
+          card: compact ? 'p-3' : 'p-5',
+          section: compact ? 'px-4 py-2' : 'px-5 py-3',
+          sectionTight: compact ? 'px-4 py-1.5' : 'px-5 py-2.5',
+          form: compact ? 'p-3 gap-3' : 'p-5 gap-4',
+          rowY: compact ? 'py-1' : 'py-2',
+          rowYTight: compact ? 'py-1.5' : 'py-2.5',
+          rowX: compact ? 'px-2.5' : 'px-4',
+          gapY: compact ? 'space-y-3' : 'space-y-6',
+          kpiGap: compact ? 'gap-2' : 'gap-4',
+        };
+
+        // Total units across the job = sum of all primary-window line quantities.
+        const totalUnits = useMemo(
+          () =>
+            lines.reduce((sum, ln) => {
+              const item = ITEM_BY_ID[ln.itemId];
+              if (!item || item.family === 'Add-on') return sum;
+              return sum + Number(ln.qty || 0);
+            }, 0),
+          [lines],
+        );
+
+        const currentItem = ITEM_BY_ID[form.itemId];
+        const qtyNum = Number(form.qty || 0);
+
+        // Live preview: include this in-progress line in the tier roll-up
+        const previewTotalUnits = useMemo(() => {
+          if (!currentItem || currentItem.family === 'Add-on') return totalUnits;
+          return totalUnits + qtyNum;
+        }, [totalUnits, currentItem, qtyNum]);
+
+        const currentLinePrice = useMemo(
+          () => linePrice(currentItem, qtyNum, form.colorKey, previewTotalUnits),
+          [currentItem, qtyNum, form.colorKey, previewTotalUnits],
+        );
+
+        // Net (final) total — what they actually pay at the locked-in volume tier.
+        const jobNetTotal = useMemo(() => {
+          return lines.reduce((sum, ln) => {
+            const item = ITEM_BY_ID[ln.itemId];
+            return sum + linePrice(item, Number(ln.qty || 0), ln.colorKey, totalUnits);
+          }, 0);
+        }, [lines, totalUnits]);
+
+        // Gross subtotal — same lines priced at the un-discounted tier-1 (1–9 / 1–14) rate.
+        const jobGrossTotal = useMemo(() => {
+          return lines.reduce((sum, ln) => {
+            const item = ITEM_BY_ID[ln.itemId];
+            return sum + lineSubtotalGross(item, Number(ln.qty || 0), ln.colorKey);
+          }, 0);
+        }, [lines]);
+
+        const volumeSavings = jobGrossTotal - jobNetTotal;
+        const grandTotal = jobNetTotal + currentLinePrice;
+
+        // Tier optimizer: find the closest upcoming break across all tier types in the job.
+        // The label is generic ("units") — every primary line, doors included, counts toward totalUnits.
+        const tierTip = useMemo(() => {
+          if (totalUnits <= 0) return [];
+          const candidates = [];
+          const usingMezzo = lines.some((ln) => ITEM_BY_ID[ln.itemId]?.tierType === 'mezzo');
+          const usingCasement = lines.some((ln) => ITEM_BY_ID[ln.itemId]?.tierType === 'casement');
+          if (usingMezzo) {
+            if (totalUnits < 10) candidates.push({ target: 10, label: '10–19' });
+            else if (totalUnits < 20) candidates.push({ target: 20, label: '20+' });
+          }
+          if (usingCasement && totalUnits < 15) {
+            candidates.push({ target: 15, label: '15+' });
+          }
+          if (!candidates.length) return [];
+          // Pick the closest reachable break (within 6 units)
+          candidates.sort((a, b) => a.target - b.target);
+          const next = candidates.find((c) => c.target - totalUnits <= 6 && c.target - totalUnits > 0);
+          if (!next) return [];
+          const atCurrent = lines.reduce(
+            (s, ln) => s + linePrice(ITEM_BY_ID[ln.itemId], Number(ln.qty || 0), ln.colorKey, totalUnits),
+            0,
+          );
+          const atTarget = lines.reduce(
+            (s, ln) => s + linePrice(ITEM_BY_ID[ln.itemId], Number(ln.qty || 0), ln.colorKey, next.target),
+            0,
+          );
+          const savings = atCurrent - atTarget;
+          if (savings <= 0) return [];
+          return [{ needed: next.target - totalUnits, nextTier: next.label, savings }];
+        }, [lines, totalUnits]);
+
+        function addLine() {
+          if (!form.itemId || !qtyNum) return;
+          setLines((ls) => [...ls, { ...form, qty: qtyNum, key: Date.now() }]);
+          setForm({ ...blank });
+        }
+
+        function resetAll() {
+          setForm({ ...blank });
+          setLines([]);
+          setResetTick((t) => t + 1);
+        }
+
+        const kpiCardPad = compact ? 'p-3' : 'p-5';
+        const kpiCardLabel =
+          'text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-neutral-400 font-semibold';
+        const kpiCardValue = (compact ? 'text-2xl' : 'text-3xl') + ' font-extrabold tabular-nums';
+
+        return (
+          <div className={d.gapY}>
+            {/* KPI strip — Total Units / Total Amount / Volume tier (sticky optional) */}
+            <div
+              className={
+                stickyTotals
+                  ? 'sticky top-0 z-30 -mx-4 sm:-mx-8 px-4 sm:px-8 py-2 bg-brand-greyBg/95 dark:bg-neutral-950/95 backdrop-blur'
+                  : ''
+              }
+            >
+              <div className={'grid grid-cols-1 md:grid-cols-3 ' + d.kpiGap}>
+                <Card className={kpiCardPad}>
+                  <div className={kpiCardLabel}>Total Units</div>
+                  <div className={'mt-1 ' + kpiCardValue + ' text-slate-900 dark:text-white'}>
+                    {previewTotalUnits}
+                  </div>
+                </Card>
+                <Card className={kpiCardPad}>
+                  <div className={kpiCardLabel}>Total Amount</div>
+                  <div className={'mt-1 ' + kpiCardValue + ' text-brand-orange'}>{fmt(grandTotal)}</div>
+                </Card>
+                <Card className={kpiCardPad}>
+                  <div className={kpiCardLabel}>Volume Tier</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-neutral-100">
+                    {tierLabel(previewTotalUnits)}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {/* Tier optimizer hint — hidden when the rep disables it in settings */}
+            {showTierHint && tierTip.length > 0 && (
+              <div className="space-y-2">
+                {tierTip.map((t, i) => (
+                  <div
+                    key={i}
+                    className={
+                      'rounded-xl bg-gradient-to-r from-brand-orange/15 to-brand-orangeLight/20 dark:from-brand-orange/20 dark:to-brand-orangeLight/10 border border-brand-orange/40 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ' +
+                      (compact ? 'px-3 py-2' : 'px-4 py-3')
+                    }
+                  >
+                    <div className={compact ? 'text-xl' : 'text-2xl'}>⭐</div>
+                    <div className="flex-1 text-sm text-slate-800 dark:text-neutral-100">
+                      <span className="font-bold">
+                        Add {t.needed} more unit{t.needed === 1 ? '' : 's'}
+                      </span>{' '}
+                      to unlock the <span className="font-bold">{t.nextTier}</span> volume tier — drops existing line
+                      prices by <span className="font-extrabold text-brand-orange">{fmt(t.savings)}</span>.
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Estimator form */}
+            <Card className="overflow-hidden">
+              <div className={'bg-brand-orange text-white flex items-center justify-between gap-3 ' + d.sectionTight}>
+                <div className="font-bold tracking-tight">Add an Item</div>
+                <button
+                  onClick={resetAll}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-red hover:bg-red-700 text-white px-3 py-1.5 text-xs font-bold tracking-wide shadow-sm transition-colors ring-1 ring-white/20"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <path d="M3 4v5h5" />
+                  </svg>
+                  Reset
+                </button>
+              </div>
+              <div className={'grid grid-cols-1 md:grid-cols-12 ' + d.form}>
+                <div className="md:col-span-5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                    Product Type
+                  </label>
+                  <select
+                    key={'item-' + resetTick}
+                    value={form.itemId}
+                    onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                  >
+                    <option value="">Select product type…</option>
+                    <optgroup label="Mezzo">
+                      {MEZZO.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Casement / Awning">
+                      {CASEMENT.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Fusion">
+                      {FUSION.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Patio Doors">
+                      {PATIO.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Additional Options">
+                      {OPTIONS.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                    Quantity
+                  </label>
+                  <input
+                    key={'qty-' + resetTick}
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.qty}
+                    onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange tabular-nums"
+                  />
+                </div>
+
+                <div className="md:col-span-5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                    Color
+                  </label>
+                  <select
+                    key={'color-' + resetTick}
+                    value={form.colorKey}
+                    onChange={(e) => setForm((f) => ({ ...f, colorKey: e.target.value }))}
+                    disabled={currentItem && currentItem.tierType === 'flat'}
+                    title={currentItem && currentItem.tierType === 'flat' ? 'Color does not apply to add-on options' : ''}
+                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50"
+                  >
+                    {COLORS.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.label} {c.multiplier !== 1 ? `(+${Math.round((c.multiplier - 1) * 100)}%)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Live line readout */}
+                <div className="md:col-span-12">
+                  <div
+                    className={
+                      'rounded-xl bg-brand-greyBg dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 ' +
+                      (compact ? 'px-3 py-2' : 'px-4 py-3')
+                    }
+                  >
+                    <div className="flex-1 text-sm text-slate-700 dark:text-neutral-200">
+                      {currentItem ? (
+                        <Fragment>
+                          <span className="font-semibold">{currentItem.label}</span>
+                          <span className="text-slate-500 dark:text-neutral-400">
+                            {' '}
+                            • {currentItem.family}
+                          </span>
+                        </Fragment>
+                      ) : (
+                        <span className="text-slate-500 dark:text-neutral-400">
+                          Pick a window type to preview the price.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-neutral-400 font-semibold">
+                          Line Price
+                        </div>
+                        <div className="text-xl font-extrabold text-brand-orange tabular-nums">
+                          {fmt(currentLinePrice)}
+                        </div>
+                      </div>
+                      <button
+                        onClick={addLine}
+                        disabled={!form.itemId || !qtyNum}
+                        className="rounded-xl bg-brand-navy hover:bg-brand-navyDeep text-white px-4 py-2.5 text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        + Add to Job
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Job line items */}
+            <Card className="overflow-hidden">
+              <div className={'bg-brand-section text-white flex items-center justify-between ' + d.section}>
+                <div className="font-bold tracking-tight">Job Line Items</div>
+                <Pill tone="orange">{lines.length} line{lines.length === 1 ? '' : 's'}</Pill>
+              </div>
+              {lines.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 dark:text-neutral-400 text-sm">
+                  No items added yet. Build your estimate above.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 dark:bg-neutral-800/50 text-slate-700 dark:text-neutral-300 uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Item</th>
+                        <th className="px-4 py-2 text-left">Family</th>
+                        <th className="px-4 py-2 text-left">Color</th>
+                        <th className="px-4 py-2 text-right">Qty</th>
+                        <th className="px-4 py-2 text-right">Line Price</th>
+                        <th className="px-4 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-neutral-800">
+                      {lines.map((ln, idx) => {
+                        const item = ITEM_BY_ID[ln.itemId];
+                        const color = COLORS.find((c) => c.key === ln.colorKey);
+                        const td = d.rowX + ' ' + d.rowY;
+                        return (
+                          <tr key={ln.key} className="hover:bg-slate-50 dark:hover:bg-neutral-800/40">
+                            <td className={td + ' font-semibold text-slate-900 dark:text-white'}>
+                              {item ? item.label : '—'}
+                            </td>
+                            <td className={td + ' text-slate-600 dark:text-neutral-400'}>
+                              {item ? item.family : '—'}
+                            </td>
+                            <td className={td + ' text-slate-600 dark:text-neutral-400'}>
+                              {!item || item.tierType === 'flat' ? '—' : color ? color.label : '—'}
+                            </td>
+                            <td className={td + ' text-right'}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={ln.qty}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setLines((ls) =>
+                                    ls.map((l, i) =>
+                                      i === idx ? { ...l, qty: v === '' ? 0 : Number(v) } : l,
+                                    ),
+                                  );
+                                }}
+                                className="w-16 text-right tabular-nums font-medium text-slate-900 dark:text-white bg-transparent rounded-md px-1.5 py-1 border border-transparent hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-white dark:hover:bg-neutral-950 focus:bg-white dark:focus:bg-neutral-950 focus:ring-2 focus:ring-brand-orange focus:outline-none focus:border-transparent"
+                              />
+                            </td>
+                            <td className={td + ' text-right tabular-nums font-bold text-brand-orange'}>
+                              {fmt(linePrice(item, Number(ln.qty), ln.colorKey, totalUnits))}
+                            </td>
+                            <td className={td + ' text-right'}>
+                              <button
+                                onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}
+                                className="text-slate-400 hover:text-brand-red font-bold text-lg leading-none"
+                                aria-label="Remove line"
+                              >
+                                ×
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-slate-50 dark:bg-neutral-800/30">
+                      <tr>
+                        <td
+                          colSpan="4"
+                          className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-slate-600 dark:text-neutral-300"
+                        >
+                          Subtotal
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+                          {fmt(jobGrossTotal)}
+                        </td>
+                        <td></td>
+                      </tr>
+                      {volumeSavings > 0 && (
+                        <tr>
+                          <td
+                            colSpan="4"
+                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400"
+                          >
+                            Volume Savings
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            −{fmt(volumeSavings)}
+                          </td>
+                          <td></td>
+                        </tr>
+                      )}
+                      <tr className="border-t-2 border-slate-300 dark:border-neutral-700">
+                        <td
+                          colSpan="4"
+                          className="px-4 py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-slate-700 dark:text-neutral-200"
+                        >
+                          Total
+                        </td>
+                        <td className="px-4 py-3 text-right text-lg font-extrabold text-brand-orange tabular-nums">
+                          {fmt(jobNetTotal)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+          </div>
+        );
+      }
+
+      // --------------------------------------------------------------------
+      // Catalog — replicates the spreadsheet's two-column layout:
+      //   Left column  = PAR PRICES sections
+      //   Right column = SIZE LIMITS sections
+      // --------------------------------------------------------------------
+
+      // Size-limit sections, taken directly from the Price_and_Sizes sheet.
+      // Each row is [Style, Min W (in), Max W (in), Min H (in), Max H (in)].
+      const SIZE_SECTIONS = [
+        {
+          title: 'MEZZO',
+          rows: [
+            ['DH', '12', '50', '20', '72'],
+            ['2LS', '18.5', '96', '11.25', '72'],
+            ['3LS 192 UI', '47.5', '120', '11.25', '72'],
+            ['PIC 154 UI', '9.5', '112', '9.5', '112'],
+            ['TRAPEZOID 154 UI', '12', '112', '6 / 11.5', '108'],
+          ],
+          note: 'Any DH between 72" and 96", or any DH with a top sash ≥ 36", must use a SH.',
+        },
+        {
+          title: 'FUSION',
+          rows: [
+            ['CIR TOP', '11.5', '96', '6 / 12', '96 / 107'],
+            ['CIR T w/leg 148 UI', '23.5', '96', '11.5', '48'],
+            ['SPEC SH', '23.5', '47', '43', '96'],
+            ['TRAP 192 UI', '23.5', '72', '18', '96'],
+          ],
+        },
+        {
+          title: 'PATIO DOORS',
+          rows: [
+            ['2 LITE 200', '47.5', '120', '47.5', '96'],
+            ['3 LITE 216 UI', '71.5', '130', '47.5', '96'],
+            ['4 LITE 240 UI', '95.5', '144', '47.5', '96'],
+          ],
+        },
+        {
+          title: 'MEZZO TRIPLE PANE',
+          rows: [
+            ['PIC', '9.5', '86', '9.5', '86'],
+            ['PIC', '27', '84', '13.5', '42'],
+            ['PIC', '27', '47', '43', '96'],
+          ],
+        },
+        {
+          title: 'MEZZO STUCCO SPECIALTY',
+          rows: [
+            ['PIC', '27', '60', '27', '60'],
+            ['CIRCLE TOP', '27', '96', '13.5', '48'],
+            ['CIR T w/leg', '27', '84', '15', '96'],
+            ['PIC', '27', '47', '43', '96'],
+          ],
+          note: 'Use 80 Series on any Circle Top if width is below 27" (available down to 23.5").',
+        },
+      ];
+
+      function CatalogTable({ title, headers, rows, tone = 'orange', muted = false, density = 'comfortable', note }) {
+        const compact = density === 'compact';
+        const headBg =
+          tone === 'orange'
+            ? 'bg-brand-orange'
+            : tone === 'navy'
+              ? 'bg-brand-navy'
+              : tone === 'grey'
+                ? 'bg-neutral-700'
+                : tone === 'muted'
+                  ? 'bg-slate-500'
+                  : 'bg-brand-orange';
+        const headerPad = compact ? 'px-4 py-1.5' : 'px-5 py-2.5';
+        const thPad = compact ? 'px-3 py-1' : 'px-3 py-2';
+        const tdPad = compact ? 'px-3 py-1' : 'px-3 py-2';
+        return (
+          <Card className="overflow-hidden">
+            <div className={'text-white font-bold tracking-tight text-sm ' + headBg + ' ' + headerPad}>
+              {title}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-neutral-800/60 text-slate-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider">
+                    {headers.map((h, i) => (
+                      <th key={i} className={thPad + ' ' + (i === 0 ? 'text-left' : 'text-right')}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-neutral-800">
+                  {rows.map((r, i) => (
+                    <tr
+                      key={i}
+                      className={
+                        'hover:bg-slate-50 dark:hover:bg-neutral-800/40 ' +
+                        (muted ? 'text-slate-400 dark:text-neutral-500 italic' : '')
+                      }
+                    >
+                      {r.map((cell, j) => (
+                        <td
+                          key={j}
+                          className={
+                            tdPad +
+                            ' ' +
+                            (j === 0
+                              ? 'text-left font-semibold ' + (muted ? '' : 'text-slate-900 dark:text-white')
+                              : 'text-right tabular-nums ' + (muted ? '' : 'text-slate-700 dark:text-neutral-200'))
+                          }
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {note && (
+              <div
+                className={
+                  'border-t border-slate-200 dark:border-neutral-800 text-[11px] italic text-slate-500 dark:text-neutral-400 ' +
+                  (compact ? 'px-3 py-1.5' : 'px-4 py-2')
+                }
+              >
+                {note}
+              </div>
+            )}
+          </Card>
+        );
+      }
+
+      function Catalog({ density = 'comfortable' }) {
+        const compact = density === 'compact';
+        const cardPad = compact ? 'p-3' : 'p-5';
+        const colGap = compact ? 'space-y-3' : 'space-y-5';
+        const sectionGap = compact ? 'space-y-3' : 'space-y-6';
+        const sizeHeaders = ['Style', 'Min W (")', 'Max W (")', 'Min H (")', 'Max H (")'];
+
+        return (
+          <div className={sectionGap}>
+            <Card className={cardPad}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-brand-orange font-bold">Catalog</div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white">Par Prices & Size Limits</div>
+                  <div className="text-sm text-slate-500 dark:text-neutral-400 mt-1">
+                    Prices and sizes laid out side-by-side, matching the master spreadsheet. Apply the color factor
+                    for Desert Clay or Black / Bronze.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Pill tone="orange">White / Beige ×1.00</Pill>
+                  <Pill tone="navy">Desert Clay ×1.10</Pill>
+                  <Pill tone="grey">Black / Bronze ×1.25</Pill>
+                </div>
+              </div>
+            </Card>
+
+            <div className={'grid grid-cols-1 lg:grid-cols-2 items-start ' + (compact ? 'gap-3' : 'gap-6')}>
+              {/* ----------- LEFT COLUMN — PAR PRICES ----------- */}
+              <div className={colGap}>
+                <div className="px-3 py-2 rounded-lg bg-brand-orange/10 dark:bg-brand-orange/20 border border-brand-orange/30 text-brand-orange font-extrabold text-xs uppercase tracking-[0.2em]">
+                  Par Prices
+                </div>
+
+                <CatalogTable
+                  title="MEZZO"
+                  headers={['Style', '1–9', '10–19', '20+']}
+                  rows={MEZZO.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1]), fmt(w.tiers[2])])}
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="CASEMENT / AWNING"
+                  headers={['Style', '1–14', '15+']}
+                  rows={CASEMENT.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1])])}
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="FUSION"
+                  headers={['Style', '1–14', '15+']}
+                  rows={FUSION.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1])])}
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="PATIO DOORS"
+                  headers={['Size', 'Price']}
+                  rows={PATIO.map((w) => [w.label, fmt(w.price)])}
+                  tone="navy"
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="ADDITIONAL OPTIONS"
+                  headers={['Option', 'Price (each)']}
+                  rows={OPTIONS.map((w) => [w.label, fmt(w.price)])}
+                  tone="grey"
+                  density={density}
+                />
+              </div>
+
+              {/* ----------- RIGHT COLUMN — SIZE LIMITS ----------- */}
+              <div className={colGap}>
+                <div className="px-3 py-2 rounded-lg bg-brand-navy/10 dark:bg-brand-navy/30 border border-brand-navy/30 text-brand-navy dark:text-brand-orangeLight font-extrabold text-xs uppercase tracking-[0.2em]">
+                  Size Limits
+                </div>
+
+                {SIZE_SECTIONS.map((sec, idx) => (
+                  <CatalogTable
+                    key={idx}
+                    title={sec.title}
+                    headers={sizeHeaders}
+                    rows={sec.rows}
+                    tone={sec.placeholder ? 'muted' : 'navy'}
+                    muted={sec.placeholder}
+                    density={density}
+                    note={sec.note}
+                  />
+                ))}
+              </div>
+            </div>
+
+          </div>
+        );
+      }
+
+      // --------------------------------------------------------------------
+      // App shell
+      // --------------------------------------------------------------------
+      function App() {
+        const [view, setView] = useState('pricing');
+        const [theme, setTheme] = useState('light');
+        const [colorTheme, setColorTheme] = useState('tempest');
+        const [zoom, setZoom] = useState(1);
+        const [density, setDensity] = useState('compact');
+        const [showTierHint, setShowTierHint] = useState(true);
+        const [stickyTotals, setStickyTotals] = useState(true);
+
+        // Lifted Pricing Tool state — persists when the user toggles to Catalog.
+        const [form, setForm] = useState(BLANK_FORM);
+        const [lines, setLines] = useState([]);
+        const [resetTick, setResetTick] = useState(0);
+
+        useEffect(() => {
+          const root = document.documentElement;
+          if (theme === 'dark') root.classList.add('dark');
+          else root.classList.remove('dark');
+        }, [theme]);
+
+        useEffect(() => {
+          const t = THEMES[colorTheme] || THEMES.tempest;
+          Object.entries(t.vars).forEach(([k, v]) => {
+            document.documentElement.style.setProperty(k, v);
+          });
+        }, [colorTheme]);
+
+        const ZOOM_STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0];
+        const stepZoom = (dir) => {
+          const idx = ZOOM_STEPS.findIndex((z) => Math.abs(z - zoom) < 0.001);
+          const fallback = ZOOM_STEPS.findIndex((z) => z >= zoom);
+          const cur = idx >= 0 ? idx : Math.max(0, fallback);
+          const next = Math.min(ZOOM_STEPS.length - 1, Math.max(0, cur + dir));
+          setZoom(ZOOM_STEPS[next]);
+        };
+
+        return (
+          <div className="min-h-screen flex flex-col bg-brand-greyBg dark:bg-neutral-950 transition-colors">
+            <Header
+              view={view}
+              setView={setView}
+              theme={theme}
+              setTheme={setTheme}
+              colorTheme={colorTheme}
+              setColorTheme={setColorTheme}
+              zoom={zoom}
+              onZoomIn={() => stepZoom(1)}
+              onZoomOut={() => stepZoom(-1)}
+              onZoomReset={() => setZoom(1)}
+              density={density}
+              setDensity={setDensity}
+              showTierHint={showTierHint}
+              setShowTierHint={setShowTierHint}
+              stickyTotals={stickyTotals}
+              setStickyTotals={setStickyTotals}
+            />
+            <main
+              className="flex-1 px-4 sm:px-8 py-6 max-w-[1180px] w-full mx-auto origin-top transition-transform"
+              style={{ zoom: zoom }}
+            >
+              {/* Both views stay mounted so Pricing Tool input is preserved across tab switches */}
+              <div style={{ display: view === 'pricing' ? 'block' : 'none' }}>
+                <PricingTool
+                  form={form}
+                  setForm={setForm}
+                  lines={lines}
+                  setLines={setLines}
+                  resetTick={resetTick}
+                  setResetTick={setResetTick}
+                  density={density}
+                  showTierHint={showTierHint}
+                  stickyTotals={stickyTotals}
+                />
+              </div>
+              <div style={{ display: view === 'catalog' ? 'block' : 'none' }}>
+                <Catalog density={density} />
+              </div>
+            </main>
+            <footer className="px-5 sm:px-8 py-4 text-[11px] text-slate-500 dark:text-neutral-400 border-t border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row gap-2 justify-between">
+              <div>© Tempest Windows — Sales Rep Pricing Calculator</div>
+              <div>
+                Built from <span className="font-mono">JOB ESTIMATOR MASTER.xlsx</span>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
+</html>

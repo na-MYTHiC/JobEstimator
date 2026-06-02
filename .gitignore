@@ -1,0 +1,15 @@
+# Working files
+_extracted/
+.claude/
+
+# Large media not needed in the repo
+*.MP4
+*.mov
+*.avi
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
