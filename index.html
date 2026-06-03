@@ -60,6 +60,13 @@
         --c-secondary-deep: 15 36 64;
         --c-section: 38 38 38;
       }
+      /* Push the header below the iOS status bar / Dynamic Island when the
+         app is launched from the Home Screen (standalone PWA mode). */
+      .app-header {
+        padding-top: env(safe-area-inset-top, 0);
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+      }
       html,
       body,
       #root {
@@ -654,13 +661,13 @@
         setStickyTotals,
       }) {
         return (
-          <header className="bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-white">
-            <div className="px-3 sm:px-8 py-3 sm:py-4 flex flex-row items-center gap-3 sm:gap-6">
+          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-white">
+            <div className="px-3 sm:px-8 py-2 sm:py-3 flex flex-row items-center gap-3 sm:gap-6">
               <div className="leading-tight min-w-0 flex-shrink">
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold tracking-tight truncate">
+                <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
                   Tempest Windows
                 </h1>
-                <div className="text-xs sm:text-sm md:text-base font-medium text-white/85 mt-0.5 truncate">
+                <div className="text-[11px] sm:text-xs md:text-sm font-medium text-white/85 mt-0.5 truncate">
                   Job Estimator
                 </div>
               </div>
