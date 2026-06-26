@@ -16,6 +16,25 @@
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
     <link rel="shortcut icon" href="icon-192.png" />
+    <script>
+      // Surface any boot-time JS error directly on the page so a white screen
+      // never happens silently — the user can read the actual problem.
+      window.addEventListener('error', function (e) {
+        var msg = (e && (e.message || e.error)) ? (e.message + (e.filename ? '\n' + e.filename + ':' + e.lineno : '')) : 'Unknown error';
+        var root = document.getElementById('root');
+        if (root && !root.__errored) {
+          root.__errored = true;
+          root.innerHTML =
+            '<div style="font-family:ui-sans-serif,system-ui;padding:24px;color:#1a1a1a;background:#fff;min-height:100vh;">' +
+              '<h2 style="margin:0 0 8px 0;color:#C8102E;">Job Estimator failed to load</h2>' +
+              '<p style="margin:0 0 12px 0;font-size:14px;">Open this in a browser, hard-refresh (Ctrl+Shift+R / Cmd+Shift+R), or screenshot the error below:</p>' +
+              '<pre style="background:#F2F4F7;border:1px solid #8A94A6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;">' +
+                String(msg).replace(/[<>&]/g, function (c) { return { '<':'&lt;','>':'&gt;','&':'&amp;' }[c]; }) +
+              '</pre>' +
+            '</div>';
+        }
+      });
+    </script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
