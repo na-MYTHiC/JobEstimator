@@ -35,10 +35,12 @@
         }
       });
     </script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Pin Babel to v7. v8 was released and dropped the classic JSX runtime
+         our inline <script type="text/babel"> uses, which silently white-screens. -->
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script>
       tailwind.config = {
         darkMode: 'class',
