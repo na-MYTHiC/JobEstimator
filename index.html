@@ -256,6 +256,28 @@
         { id: 'fu-3ls', label: '3 Lite Slider', tiers: [2752.75, 2692.25], size: 'Tri-pane configuration' },
       ];
 
+      // Bertha (Impact) — tiers 1-9 / 10-19 / 20+
+      const BERTHA = [
+        { id: 'br-dh',      label: 'Double Hung',    tiers: [4204.75, 4144.25, 4083.75] },
+        { id: 'br-2ls',     label: '2 Lite Slider',  tiers: [4204.75, 4144.25, 4083.75] },
+        { id: 'br-pic',     label: 'Picture',        tiers: [4204.75, 4144.25, 4083.75] },
+        { id: 'br-pic90',   label: 'Picture >90 UI', tiers: [5989.5,  5989.5,  5989.5]  },
+        { id: 'br-3ls',     label: '3 Lite Slider',  tiers: [7290.25, 7290.25, 7290.25] },
+        { id: 'br-spec',    label: 'Specialty',      tiers: [4870.25, 4870.25, 4870.25] },
+        { id: 'br-specsh',  label: 'Specialty SH',   tiers: [6019.75, 6019.75, 6019.75] },
+        { id: 'br-spec101', label: 'Specialty >101', tiers: [6201.25, 6201.25, 6201.25] },
+      ];
+
+      // 143 Series (Impact) — tiers 1-9 / 10-19 / 20+
+      const SERIES143 = [
+        { id: 's143-sh',      label: 'Single Hung',    tiers: [3176.25, 3115.75, 3055.25] },
+        { id: 's143-2ls',     label: '2 Lite Slider',  tiers: [3176.25, 3115.75, 3055.25] },
+        { id: 's143-pic',     label: 'Picture <92 UI', tiers: [3176.25, 3115.75, 3055.25] },
+        { id: 's143-spec',    label: 'Specialty',      tiers: [3660.25, 3599.75, 3539.25] },
+        { id: 's143-specsh',  label: 'Specialty SH',   tiers: [5293.75, 5233.25, 5172.75] },
+        { id: 's143-spec101', label: 'Specialty >101', tiers: [5112.25, 5051.75, 4991.25] },
+      ];
+
       // Patio doors — flat price per unit
       const PATIO = [
         { id: 'pd-5', label: "5' Patio Door", price: 4991.25 },
@@ -294,6 +316,8 @@
         ...MEZZO.map((w) => ({ ...w, family: 'Mezzo', tierType: 'mezzo' })),
         ...CASEMENT.map((w) => ({ ...w, family: 'Casement / Awning', tierType: 'casement' })),
         ...FUSION.map((w) => ({ ...w, family: 'Fusion', tierType: 'casement' })),
+        ...BERTHA.map((w) => ({ ...w, family: 'Bertha (Impact)', tierType: 'mezzo' })),
+        ...SERIES143.map((w) => ({ ...w, family: '143 Series (Impact)', tierType: 'mezzo' })),
         ...PATIO.map((w) => ({ ...w, family: 'Patio Doors', tierType: 'flat-color' })),
       ];
 
@@ -317,10 +341,10 @@
 
       function tierLabel(totalUnits) {
         if (totalUnits <= 0) return '— enter quantities —';
-        if (totalUnits <= 9) return '1–9 (Mezzo)   •   1–14 (Fusion / Casement)';
-        if (totalUnits <= 14) return '10–19 (Mezzo)   •   1–14 (Fusion / Casement)';
-        if (totalUnits <= 19) return '10–19 (Mezzo)   •   15+ (Fusion / Casement)';
-        return '20+ (Mezzo)   •   15+ (Fusion / Casement)';
+        if (totalUnits <= 9) return '1–9 (Mezzo / Bertha / 143)   •   1–14 (Fusion / Casement)';
+        if (totalUnits <= 14) return '10–19 (Mezzo / Bertha / 143)   •   1–14 (Fusion / Casement)';
+        if (totalUnits <= 19) return '10–19 (Mezzo / Bertha / 143)   •   15+ (Fusion / Casement)';
+        return '20+ (Mezzo / Bertha / 143)   •   15+ (Fusion / Casement)';
       }
 
       // Per-line price (color split is qty × color multiplier × base)
@@ -961,6 +985,20 @@
                         </option>
                       ))}
                     </optgroup>
+                    <optgroup label="Bertha (Impact)">
+                      {BERTHA.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="143 Series (Impact)">
+                      {SERIES143.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </optgroup>
                     <optgroup label="Patio Doors">
                       {PATIO.map((w) => (
                         <option key={w.id} value={w.id}>
@@ -1360,6 +1398,20 @@
                   title="FUSION"
                   headers={['Style', '1–14', '15+']}
                   rows={FUSION.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1])])}
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="BERTHA (IMPACT)"
+                  headers={['Style', '1–9', '10–19', '20+']}
+                  rows={BERTHA.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1]), fmt(w.tiers[2])])}
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="143 SERIES (IMPACT)"
+                  headers={['Style', '1–9', '10–19', '20+']}
+                  rows={SERIES143.map((w) => [w.label, fmt(w.tiers[0]), fmt(w.tiers[1]), fmt(w.tiers[2])])}
                   density={density}
                 />
 
