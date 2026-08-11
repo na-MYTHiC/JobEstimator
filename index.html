@@ -17,6 +17,72 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
     <link rel="shortcut icon" href="icon-192.png" />
     <script>
+      // ------------------------------------------------------------------
+      // Auto-update via service worker.
+      //
+      // The reload on controllerchange fixes the classic "needs two refreshes"
+      // PWA trap: sw.js serves assets cache-first, so the refresh that
+      // discovers a new deploy has ALREADY rendered with the old cached
+      // JS/CSS. Raising a banner when the new worker takes over lets a single
+      // tap swap everything over atomically.
+      //
+      // The worker always activates (sw.js calls skipWaiting) — the page
+      // decides when to reload. Ignore the banner and the next cold start is
+      // served from the new worker's cache regardless.
+      // ------------------------------------------------------------------
+      window.APP_VERSION = 'v1.1.0';
+      window.__jeUpdatePending = false;
+      window.jeShowUpdateBanner = function () {
+        var el = document.getElementById('update-banner');
+        if (el) el.hidden = false;
+      };
+      function jeUpdateReady() {
+        if (window.__jeUpdatePending) return;
+        window.__jeUpdatePending = true;
+        window.jeShowUpdateBanner();
+      }
+      if ('serviceWorker' in navigator && navigator.serviceWorker) {
+        // Captured before registering: if there's no controller yet this is a
+        // first-ever install, where controllerchange fires as a normal part of
+        // setup and is NOT an update to announce.
+        var hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!hadController) return;
+          jeUpdateReady();
+        });
+        window.addEventListener('load', function () {
+          // updateViaCache:'none' makes the browser bypass its HTTP cache
+          // when it checks sw.js for a new version. GitHub Pages serves
+          // sw.js with max-age=600 by default, so without this a deploy
+          // could go unnoticed for ten minutes.
+          navigator.serviceWorker
+            .register('sw.js', { updateViaCache: 'none' })
+            .then(function (reg) {
+              window.__jeSwReg = reg;
+              // Shouldn't happen now that install skips waiting, but a worker
+              // left waiting by an older build would otherwise sit forever.
+              if (reg.waiting && navigator.serviceWorker.controller) {
+                reg.waiting.postMessage({ type: 'je-skip-waiting' });
+              }
+              // An installed PWA can sit "open" for days without a cold
+              // start, so re-check whenever it comes back to the foreground.
+              // Cheap: conditional request that 304s unless sw.js changed.
+              document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') reg.update().catch(function () {});
+              });
+            })
+            .catch(function () {});
+        });
+      }
+      // Called from the Settings "Check for updates" button.
+      window.jeCheckForUpdates = function () {
+        if (window.__jeSwReg && window.__jeSwReg.update) {
+          return window.__jeSwReg.update();
+        }
+        return Promise.resolve();
+      };
+    </script>
+    <script>
       // Surface any boot-time JS error directly on the page so a white screen
       // never happens silently — the user can read the actual problem.
       window.addEventListener('error', function (e) {
@@ -132,6 +198,40 @@
     </style>
   </head>
   <body class="bg-brand-greyBg dark:bg-neutral-950 transition-colors duration-200">
+    <!-- Persistent update banner. Raised by the service-worker controllerchange
+         handler above. Lives outside the React tree so it works even if the
+         app itself fails to boot. -->
+    <div
+      id="update-banner"
+      role="status"
+      hidden
+      style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:100;background:#0F2440;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,0.35);display:flex;align-items:center;gap:12px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;max-width:520px;margin-left:auto;margin-right:auto;"
+    >
+      <div style="flex:1;line-height:1.35;">
+        <strong style="display:block;font-weight:700;">Update available</strong>
+        <span style="opacity:0.8;">Tap reload to apply it.</span>
+      </div>
+      <button
+        id="update-banner-reload"
+        style="background:#E69138;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;"
+      >Reload</button>
+      <button
+        id="update-banner-dismiss"
+        aria-label="Dismiss update banner"
+        style="background:transparent;border:none;color:rgba(255,255,255,0.7);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;"
+      >&times;</button>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var reload = document.getElementById('update-banner-reload');
+        var dismiss = document.getElementById('update-banner-dismiss');
+        if (reload) reload.addEventListener('click', function () { location.reload(); });
+        if (dismiss) dismiss.addEventListener('click', function () {
+          var b = document.getElementById('update-banner');
+          if (b) b.hidden = true;
+        });
+      });
+    </script>
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react">
@@ -287,6 +387,15 @@
         { id: 'pd-12', label: "12' Patio Door", price: 11525.25 },
       ];
 
+      // Impact patio doors — flat price per unit (color multiplier still applies)
+      const IMPACT_PATIO = [
+        { id: 'ipd-5',  label: "5' Impact Patio Door",       price: 5150.0  },
+        { id: 'ipd-6',  label: "6' Impact Patio Door",       price: 5975.0  },
+        { id: 'ipd-8',  label: "6'2\" – 8' Impact Patio Door", price: 7575.0  },
+        { id: 'ipd-9',  label: "9' Impact Patio Door",       price: 9325.0  },
+        { id: 'ipd-12', label: "12' Impact Patio Door",      price: 11075.0 },
+      ];
+
       // Additional options — flat price, no color/tier impact
       const OPTIONS = [
         { id: 'op-temp', label: 'Tempered', price: 242.0 },
@@ -319,11 +428,26 @@
         ...BERTHA.map((w) => ({ ...w, family: 'Bertha (Impact)', tierType: 'mezzo' })),
         ...SERIES143.map((w) => ({ ...w, family: '143 Series (Impact)', tierType: 'mezzo' })),
         ...PATIO.map((w) => ({ ...w, family: 'Patio Doors', tierType: 'flat-color' })),
+        ...IMPACT_PATIO.map((w) => ({ ...w, family: 'Impact Patio Doors', tierType: 'flat-color' })),
       ];
 
       const ITEM_BY_ID = Object.fromEntries(
         [...ALL_PRIMARY, ...OPTIONS.map((o) => ({ ...o, family: 'Add-on', tierType: 'flat' }))].map((i) => [i.id, i]),
       );
+
+      // Ordered families for the Category dropdown. The `key` matches each
+      // item's `family` string, so filtering the Type dropdown is a simple
+      // items.filter(i => i.family === form.familyKey).
+      const FAMILIES = [
+        { key: 'Mezzo',                label: 'Mezzo',                items: MEZZO        },
+        { key: 'Casement / Awning',    label: 'Casement / Awning',    items: CASEMENT     },
+        { key: 'Fusion',               label: 'Fusion',               items: FUSION       },
+        { key: 'Bertha (Impact)',      label: 'Bertha (Impact)',      items: BERTHA       },
+        { key: '143 Series (Impact)',  label: '143 Series (Impact)',  items: SERIES143    },
+        { key: 'Patio Doors',          label: 'Patio Doors',          items: PATIO        },
+        { key: 'Impact Patio Doors',   label: 'Impact Patio Doors',   items: IMPACT_PATIO },
+        { key: 'Add-on',               label: 'Additional Options',   items: OPTIONS      },
+      ];
 
       // Tier resolution. Mezzo: 1-9 / 10-19 / 20+. Casement+Fusion: 1-14 / 15+.
       function tierIndex(totalUnits, tierType) {
@@ -490,6 +614,50 @@
                 <path d="M11 8v6" />
               </svg>
             </button>
+          </div>
+        );
+      }
+
+      function UpdateRow() {
+        const [status, setStatus] = useState('');
+        const [busy, setBusy] = useState(false);
+        const check = async () => {
+          setBusy(true);
+          setStatus('Checking…');
+          try {
+            await (window.jeCheckForUpdates ? window.jeCheckForUpdates() : Promise.resolve());
+            // If a new SW was found it will install + activate + fire
+            // controllerchange, which raises the banner. If not, tell the user.
+            setTimeout(() => {
+              if (!window.__jeUpdatePending) setStatus("You're on the latest version.");
+              setBusy(false);
+            }, 1200);
+          } catch (e) {
+            setStatus('Check failed — try again.');
+            setBusy(false);
+          }
+        };
+        return (
+          <div className="pt-3 border-t border-slate-200 dark:border-neutral-800">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+              About
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-semibold text-slate-800 dark:text-neutral-100">Job Estimator</div>
+                <div className="text-xs text-slate-500 dark:text-neutral-400">
+                  {window.APP_VERSION || 'v0'}
+                  {status ? ` • ${status}` : ''}
+                </div>
+              </div>
+              <button
+                onClick={check}
+                disabled={busy}
+                className="rounded-lg bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 text-xs font-semibold px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Check for updates
+              </button>
+            </div>
           </div>
         );
       }
@@ -680,6 +848,8 @@
                       onChange={setStickyTotals}
                     />
                   </div>
+
+                  <UpdateRow />
                 </div>
               </div>
             )}
@@ -754,7 +924,7 @@
       // --------------------------------------------------------------------
       // Pricing Tool
       // --------------------------------------------------------------------
-      const BLANK_FORM = { itemId: '', qty: '', colorKey: 'WB' };
+      const BLANK_FORM = { familyKey: '', itemId: '', qty: '', colorKey: 'WB' };
 
       function PricingTool({
         form,
@@ -953,70 +1123,54 @@
                 </button>
               </div>
               <div className={'grid grid-cols-1 md:grid-cols-12 ' + d.form}>
-                <div className="md:col-span-5">
+                <div className="md:col-span-6">
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-                    Product Type
+                    Category
                   </label>
                   <select
-                    key={'item-' + resetTick}
-                    value={form.itemId}
-                    onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
+                    key={'family-' + resetTick}
+                    value={form.familyKey}
+                    onChange={(e) =>
+                      // Picking a new category also clears the type selection,
+                      // otherwise a leftover itemId would silently price the
+                      // wrong line.
+                      setForm((f) => ({ ...f, familyKey: e.target.value, itemId: '' }))
+                    }
                     className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
                   >
-                    <option value="">Select product type…</option>
-                    <optgroup label="Mezzo">
-                      {MEZZO.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Casement / Awning">
-                      {CASEMENT.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Fusion">
-                      {FUSION.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Bertha (Impact)">
-                      {BERTHA.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="143 Series (Impact)">
-                      {SERIES143.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Patio Doors">
-                      {PATIO.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Additional Options">
-                      {OPTIONS.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </optgroup>
+                    <option value="">Select category…</option>
+                    {FAMILIES.map((fam) => (
+                      <option key={fam.key} value={fam.key}>
+                        {fam.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div className="md:col-span-2">
+                <div className="md:col-span-6">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                    Type
+                  </label>
+                  <select
+                    key={'item-' + resetTick + '-' + form.familyKey}
+                    value={form.itemId}
+                    onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
+                    disabled={!form.familyKey}
+                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {form.familyKey ? 'Select type…' : 'Pick a category first…'}
+                    </option>
+                    {form.familyKey &&
+                      (FAMILIES.find((f) => f.key === form.familyKey)?.items || []).map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-3">
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                     Quantity
                   </label>
@@ -1031,7 +1185,7 @@
                   />
                 </div>
 
-                <div className="md:col-span-5">
+                <div className="md:col-span-9">
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                     Color
                   </label>
@@ -1419,6 +1573,14 @@
                   title="PATIO DOORS"
                   headers={['Size', 'Price']}
                   rows={PATIO.map((w) => [w.label, fmt(w.price)])}
+                  tone="navy"
+                  density={density}
+                />
+
+                <CatalogTable
+                  title="IMPACT PATIO DOORS"
+                  headers={['Size', 'Price']}
+                  rows={IMPACT_PATIO.map((w) => [w.label, fmt(w.price)])}
                   tone="navy"
                   density={density}
                 />
