@@ -30,7 +30,7 @@
       // decides when to reload. Ignore the banner and the next cold start is
       // served from the new worker's cache regardless.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.1.0';
+      window.APP_VERSION = 'v1.2.0';
       window.__jeUpdatePending = false;
       window.jeShowUpdateBanner = function () {
         var el = document.getElementById('update-banner');
@@ -499,6 +499,35 @@
         }).format(n || 0);
 
       // --------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Persisted settings
+      //
+      // Same shape as useState, but the value survives refreshes, app
+      // relaunches, and the service worker's update reload. Wrapped in
+      // try/catch because Safari private mode throws on localStorage access
+      // rather than just returning null — a settings write must never be able
+      // to take down the app.
+      // --------------------------------------------------------------------
+      function usePersistedState(key, initialValue) {
+        const storageKey = 'je:' + key;
+        const [value, setValue] = useState(() => {
+          try {
+            const raw = localStorage.getItem(storageKey);
+            return raw === null ? initialValue : JSON.parse(raw);
+          } catch (e) {
+            return initialValue;
+          }
+        });
+        useEffect(() => {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(value));
+          } catch (e) {
+            /* storage unavailable — settings just won't persist this session */
+          }
+        }, [storageKey, value]);
+        return [value, setValue];
+      }
+
       // Reusable UI primitives
       // --------------------------------------------------------------------
       function Toggle({ value, options, onChange, ariaLabel }) {
@@ -702,6 +731,8 @@
         setShowTierHint,
         stickyTotals,
         setStickyTotals,
+        pickerMode,
+        setPickerMode,
       }) {
         const [open, setOpen] = useState(false);
         const wrapRef = useRef(null);
@@ -823,6 +854,21 @@
 
                   <div>
                     <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                      Product Picker
+                    </div>
+                    <Toggle
+                      ariaLabel="Product picker style"
+                      value={pickerMode}
+                      onChange={setPickerMode}
+                      options={[
+                        { value: 'split', label: 'Category + Type' },
+                        { value: 'classic', label: 'Classic list' },
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
                       Density
                     </div>
                     <Toggle
@@ -874,6 +920,8 @@
         setShowTierHint,
         stickyTotals,
         setStickyTotals,
+        pickerMode,
+        setPickerMode,
       }) {
         return (
           <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-white">
@@ -914,6 +962,8 @@
                   setShowTierHint={setShowTierHint}
                   stickyTotals={stickyTotals}
                   setStickyTotals={setStickyTotals}
+                  pickerMode={pickerMode}
+                  setPickerMode={setPickerMode}
                 />
               </div>
             </div>
@@ -936,9 +986,11 @@
         density = 'comfortable',
         showTierHint = true,
         stickyTotals = false,
+        pickerMode = 'split',
       }) {
         const blank = BLANK_FORM;
         const compact = density === 'compact';
+        const isSplitPicker = pickerMode === 'split';
         const d = {
           card: compact ? 'p-3' : 'p-5',
           section: compact ? 'px-4 py-2' : 'px-5 py-3',
@@ -1123,54 +1175,87 @@
                 </button>
               </div>
               <div className={'grid grid-cols-1 md:grid-cols-12 ' + d.form}>
-                <div className="md:col-span-6">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-                    Category
-                  </label>
-                  <select
-                    key={'family-' + resetTick}
-                    value={form.familyKey}
-                    onChange={(e) =>
-                      // Picking a new category also clears the type selection,
-                      // otherwise a leftover itemId would silently price the
-                      // wrong line.
-                      setForm((f) => ({ ...f, familyKey: e.target.value, itemId: '' }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
-                  >
-                    <option value="">Select category…</option>
-                    {FAMILIES.map((fam) => (
-                      <option key={fam.key} value={fam.key}>
-                        {fam.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isSplitPicker ? (
+                  <Fragment>
+                    <div className="md:col-span-6">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                        Category
+                      </label>
+                      <select
+                        key={'family-' + resetTick}
+                        value={form.familyKey}
+                        onChange={(e) =>
+                          // Picking a new category also clears the type selection,
+                          // otherwise a leftover itemId would silently price the
+                          // wrong line.
+                          setForm((f) => ({ ...f, familyKey: e.target.value, itemId: '' }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                      >
+                        <option value="">Select category…</option>
+                        {FAMILIES.map((fam) => (
+                          <option key={fam.key} value={fam.key}>
+                            {fam.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="md:col-span-6">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-                    Type
-                  </label>
-                  <select
-                    key={'item-' + resetTick + '-' + form.familyKey}
-                    value={form.itemId}
-                    onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
-                    disabled={!form.familyKey}
-                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {form.familyKey ? 'Select type…' : 'Pick a category first…'}
-                    </option>
-                    {form.familyKey &&
-                      (FAMILIES.find((f) => f.key === form.familyKey)?.items || []).map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
+                    <div className="md:col-span-6">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                        Type
+                      </label>
+                      <select
+                        key={'item-' + resetTick + '-' + form.familyKey}
+                        value={form.itemId}
+                        onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
+                        disabled={!form.familyKey}
+                        className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {form.familyKey ? 'Select type…' : 'Pick a category first…'}
                         </option>
+                        {form.familyKey &&
+                          (FAMILIES.find((f) => f.key === form.familyKey)?.items || []).map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.label}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </Fragment>
+                ) : (
+                  /* Classic: one long grouped list. Setting familyKey alongside
+                     itemId keeps state valid if the rep switches back to split. */
+                  <div className="md:col-span-5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                      Product Type
+                    </label>
+                    <select
+                      key={'item-classic-' + resetTick}
+                      value={form.itemId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const picked = ITEM_BY_ID[id];
+                        setForm((f) => ({ ...f, itemId: id, familyKey: picked ? picked.family : '' }));
+                      }}
+                      className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                    >
+                      <option value="">Select product type…</option>
+                      {FAMILIES.map((fam) => (
+                        <optgroup key={fam.key} label={fam.label}>
+                          {fam.items.map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.label}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
-                  </select>
-                </div>
+                    </select>
+                  </div>
+                )}
 
-                <div className="md:col-span-3">
+                <div className={isSplitPicker ? 'md:col-span-3' : 'md:col-span-2'}>
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                     Quantity
                   </label>
@@ -1185,7 +1270,7 @@
                   />
                 </div>
 
-                <div className="md:col-span-9">
+                <div className={isSplitPicker ? 'md:col-span-9' : 'md:col-span-5'}>
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                     Color
                   </label>
@@ -1224,7 +1309,7 @@
                         </Fragment>
                       ) : (
                         <span className="text-slate-500 dark:text-neutral-400">
-                          Pick a window type to preview the price.
+                          Pick a product type to preview the price.
                         </span>
                       )}
                     </div>
@@ -1624,12 +1709,14 @@
       // --------------------------------------------------------------------
       function App() {
         const [view, setView] = useState('pricing');
-        const [theme, setTheme] = useState('light');
-        const [colorTheme, setColorTheme] = useState('tempest');
-        const [zoom, setZoom] = useState(1);
-        const [density, setDensity] = useState('compact');
-        const [showTierHint, setShowTierHint] = useState(true);
-        const [stickyTotals, setStickyTotals] = useState(true);
+        // Every setting below persists across refreshes and app relaunches.
+        const [theme, setTheme] = usePersistedState('theme', 'light');
+        const [colorTheme, setColorTheme] = usePersistedState('colorTheme', 'tempest');
+        const [zoom, setZoom] = usePersistedState('zoom', 1);
+        const [density, setDensity] = usePersistedState('density', 'compact');
+        const [showTierHint, setShowTierHint] = usePersistedState('showTierHint', true);
+        const [stickyTotals, setStickyTotals] = usePersistedState('stickyTotals', true);
+        const [pickerMode, setPickerMode] = usePersistedState('pickerMode', 'split');
 
         // Lifted Pricing Tool state — persists when the user toggles to Catalog.
         const [form, setForm] = useState(BLANK_FORM);
@@ -1677,6 +1764,8 @@
               setShowTierHint={setShowTierHint}
               stickyTotals={stickyTotals}
               setStickyTotals={setStickyTotals}
+              pickerMode={pickerMode}
+              setPickerMode={setPickerMode}
             />
             <main
               className="flex-1 px-4 sm:px-8 py-6 max-w-[1180px] w-full mx-auto origin-top transition-transform"
@@ -1694,6 +1783,7 @@
                   density={density}
                   showTierHint={showTierHint}
                   stickyTotals={stickyTotals}
+                  pickerMode={pickerMode}
                 />
               </div>
               <div style={{ display: view === 'catalog' ? 'block' : 'none' }}>

@@ -13,7 +13,7 @@
 // Version bumps: bump VERSION on every deploy so the activate step wipes the
 // old cache and forces the app shell to be re-fetched cleanly.
 
-const VERSION = 'je-v2';
+const VERSION = 'je-v3';
 const SHELL = [
   './',
   './index.html',
