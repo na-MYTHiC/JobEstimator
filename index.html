@@ -30,7 +30,7 @@
       // decides when to reload. Ignore the banner and the next cold start is
       // served from the new worker's cache regardless.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.2.0';
+      window.APP_VERSION = 'v1.3.0';
       window.__jeUpdatePending = false;
       window.jeShowUpdateBanner = function () {
         var el = document.getElementById('update-banner');
@@ -113,17 +113,29 @@
         theme: {
           extend: {
             colors: {
+              // Semantic tokens. Every one resolves to a CSS variable that the
+              // active theme sets for BOTH light and dark mode, so components
+              // never need `dark:` colour variants and themes stay seamless.
+              page: 'rgb(var(--c-page) / <alpha-value>)',
+              surface: 'rgb(var(--c-surface) / <alpha-value>)',
+              surface2: 'rgb(var(--c-surface-2) / <alpha-value>)',
+              line: 'rgb(var(--c-line) / <alpha-value>)',
+              content: 'rgb(var(--c-content) / <alpha-value>)',
+              muted: 'rgb(var(--c-muted) / <alpha-value>)',
+              ink: 'rgb(var(--c-ink) / <alpha-value>)',
+              onInk: 'rgb(var(--c-on-ink) / <alpha-value>)',
+              onAccent: 'rgb(var(--c-on-accent) / <alpha-value>)',
+              positive: 'rgb(var(--c-positive) / <alpha-value>)',
+              danger: 'rgb(var(--c-danger) / <alpha-value>)',
               brand: {
-                orange: 'rgb(var(--c-primary) / <alpha-value>)',
-                orangeLight: 'rgb(var(--c-primary-light) / <alpha-value>)',
-                orangeAccent: 'rgb(var(--c-primary-accent) / <alpha-value>)',
-                navy: 'rgb(var(--c-secondary) / <alpha-value>)',
-                navyDeep: 'rgb(var(--c-secondary-deep) / <alpha-value>)',
-                section: 'rgb(var(--c-section) / <alpha-value>)',
-                grey: '#666666',
-                greyBg: '#F2F4F7',
-                greyBorder: '#8A94A6',
-                red: '#C8102E',
+                orange: 'rgb(var(--c-accent) / <alpha-value>)',
+                orangeLight: 'rgb(var(--c-accent-soft) / <alpha-value>)',
+                orangeAccent: 'rgb(var(--c-accent-deep) / <alpha-value>)',
+                navy: 'rgb(var(--c-ink) / <alpha-value>)',
+                navyDeep: 'rgb(var(--c-ink) / <alpha-value>)',
+                section: 'rgb(var(--c-ink) / <alpha-value>)',
+                greyBg: 'rgb(var(--c-page) / <alpha-value>)',
+                red: 'rgb(var(--c-danger) / <alpha-value>)',
               },
             },
             fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
@@ -139,14 +151,68 @@
     />
     <style>
       :root {
-        /* Default to Tempest theme — JS will overwrite for other themes */
-        --c-primary: 230 145 56;
-        --c-primary-light: 246 178 107;
-        --c-primary-accent: 255 153 0;
-        --c-secondary: 31 58 95;
-        --c-secondary-deep: 15 36 64;
-        --c-section: 38 38 38;
+        /* Tempest / light. JS overwrites the whole set on theme or mode change. */
+        --c-accent: 230 145 56;
+        --c-accent-soft: 246 178 107;
+        --c-accent-deep: 201 118 33;
+        --c-on-accent: 255 255 255;
+        --c-page: 250 249 247;
+        --c-surface: 255 255 255;
+        --c-surface-2: 245 243 240;
+        --c-line: 232 227 221;
+        --c-content: 28 25 23;
+        --c-muted: 122 114 108;
+        --c-ink: 41 37 35;
+        --c-on-ink: 255 255 255;
+        --c-positive: 5 150 105;
+        --c-danger: 200 16 46;
       }
+      /* Update banner. `display` lives here rather than in an inline style so
+         the `hidden` attribute actually works — an inline `display:flex` beats
+         the UA stylesheet's `[hidden] { display:none }` and pinned the banner
+         permanently on screen. Both rules being in the stylesheet lets the
+         more specific `[hidden]` selector win. */
+      #update-banner {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgb(var(--c-ink));
+        color: rgb(var(--c-on-ink));
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        font-size: 14px;
+      }
+      #update-banner[hidden] {
+        display: none;
+      }
+      #update-banner-reload {
+        background: rgb(var(--c-accent));
+        color: rgb(var(--c-on-accent));
+        border: none;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #update-banner-dismiss {
+        background: transparent;
+        border: none;
+        color: rgb(var(--c-on-ink) / 0.7);
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 6px;
+      }
+
       /* Push the header below the iOS status bar / Dynamic Island when the
          app is launched from the Home Screen (standalone PWA mode). */
       .app-header {
@@ -197,38 +263,34 @@
       }
     </style>
   </head>
-  <body class="bg-brand-greyBg dark:bg-neutral-950 transition-colors duration-200">
+  <body class="bg-page bg-page transition-colors duration-200">
     <!-- Persistent update banner. Raised by the service-worker controllerchange
          handler above. Lives outside the React tree so it works even if the
          app itself fails to boot. -->
-    <div
-      id="update-banner"
-      role="status"
-      hidden
-      style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:100;background:#0F2440;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,0.35);display:flex;align-items:center;gap:12px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;max-width:520px;margin-left:auto;margin-right:auto;"
-    >
+    <div id="update-banner" role="status" hidden>
       <div style="flex:1;line-height:1.35;">
         <strong style="display:block;font-weight:700;">Update available</strong>
-        <span style="opacity:0.8;">Tap reload to apply it.</span>
+        <span style="opacity:0.75;">Tap reload to apply it.</span>
       </div>
-      <button
-        id="update-banner-reload"
-        style="background:#E69138;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;"
-      >Reload</button>
-      <button
-        id="update-banner-dismiss"
-        aria-label="Dismiss update banner"
-        style="background:transparent;border:none;color:rgba(255,255,255,0.7);font-size:22px;line-height:1;cursor:pointer;padding:0 6px;"
-      >&times;</button>
+      <button id="update-banner-reload">Reload</button>
+      <button id="update-banner-dismiss" aria-label="Dismiss update banner">&times;</button>
     </div>
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         var reload = document.getElementById('update-banner-reload');
         var dismiss = document.getElementById('update-banner-dismiss');
-        if (reload) reload.addEventListener('click', function () { location.reload(); });
+        if (reload) reload.addEventListener('click', function () {
+          var b = document.getElementById('update-banner');
+          if (b) b.hidden = true;
+          window.__jeUpdatePending = false;
+          location.reload();
+        });
         if (dismiss) dismiss.addEventListener('click', function () {
           var b = document.getElementById('update-banner');
           if (b) b.hidden = true;
+          // Cleared so a later "Check for updates" reports honestly instead of
+          // still thinking an update is outstanding.
+          window.__jeUpdatePending = false;
         });
       });
     </script>
@@ -237,81 +299,238 @@
     <script type="text/babel" data-presets="react">
       const { useState, useMemo, useEffect, useCallback, useRef, Fragment } = React;
 
-      // ---- Color themes -------------------------------------------------
-      // Values are space-separated RGB triplets so Tailwind opacity modifiers
-      // (e.g. bg-brand-orange/15) keep working via rgb(var(--x) / <alpha-value>).
+      // ---- Colour themes ------------------------------------------------
+      // Each theme carries a full palette for BOTH light and dark mode, so
+      // switching mode never falls back to a generic grey that clashes with
+      // the accent. Values are space-separated RGB triplets so Tailwind
+      // opacity modifiers (bg-brand-orange/15) still work through
+      // rgb(var(--x) / <alpha-value>).
+      //
+      // Surfaces are tinted a few points toward each theme's hue rather than
+      // being neutral grey — that's what makes a theme read as one piece
+      // instead of an accent colour dropped onto a stock UI.
       const THEMES = {
         tempest: {
           name: 'Tempest',
           swatch: '#E69138',
-          vars: {
-            '--c-primary': '230 145 56',
-            '--c-primary-light': '246 178 107',
-            '--c-primary-accent': '255 153 0',
-            '--c-secondary': '31 58 95',
-            '--c-secondary-deep': '15 36 64',
-            '--c-section': '38 38 38',
+          light: {
+            '--c-accent': '230 145 56',
+            '--c-accent-soft': '246 178 107',
+            '--c-accent-deep': '201 118 33',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '250 249 247',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '245 243 240',
+            '--c-line': '232 227 221',
+            '--c-content': '28 25 23',
+            '--c-muted': '122 114 108',
+            '--c-ink': '41 37 35',
+            '--c-on-ink': '255 255 255',
+            '--c-positive': '5 150 105',
+            '--c-danger': '200 16 46',
+          },
+          dark: {
+            '--c-accent': '235 155 70',
+            '--c-accent-soft': '246 189 130',
+            '--c-accent-deep': '214 130 45',
+            '--c-on-accent': '28 20 10',
+            '--c-page': '23 21 19',
+            '--c-surface': '33 30 27',
+            '--c-surface-2': '43 39 35',
+            '--c-line': '58 52 47',
+            '--c-content': '245 243 240',
+            '--c-muted': '164 156 148',
+            '--c-ink': '15 13 12',
+            '--c-on-ink': '245 243 240',
+            '--c-positive': '52 199 145',
+            '--c-danger': '240 90 110',
           },
         },
         ocean: {
           name: 'Ocean',
           swatch: '#0EA5E9',
-          vars: {
-            '--c-primary': '14 165 233',
-            '--c-primary-light': '125 211 252',
-            '--c-primary-accent': '6 182 212',
-            '--c-secondary': '15 23 42',
-            '--c-secondary-deep': '2 6 23',
-            '--c-section': '12 74 110',
+          light: {
+            '--c-accent': '14 165 233',
+            '--c-accent-soft': '125 211 252',
+            '--c-accent-deep': '2 132 199',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '247 250 252',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '240 246 251',
+            '--c-line': '221 232 241',
+            '--c-content': '15 27 38',
+            '--c-muted': '100 118 134',
+            '--c-ink': '12 46 71',
+            '--c-on-ink': '255 255 255',
+            '--c-positive': '5 150 105',
+            '--c-danger': '220 38 38',
+          },
+          dark: {
+            '--c-accent': '56 189 248',
+            '--c-accent-soft': '125 211 252',
+            '--c-accent-deep': '14 165 233',
+            '--c-on-accent': '6 24 38',
+            '--c-page': '13 20 27',
+            '--c-surface': '20 29 38',
+            '--c-surface-2': '28 40 51',
+            '--c-line': '42 57 71',
+            '--c-content': '236 244 250',
+            '--c-muted': '144 163 180',
+            '--c-ink': '7 14 21',
+            '--c-on-ink': '236 244 250',
+            '--c-positive': '52 199 145',
+            '--c-danger': '248 113 113',
           },
         },
         forest: {
           name: 'Forest',
           swatch: '#10B981',
-          vars: {
-            '--c-primary': '16 185 129',
-            '--c-primary-light': '110 231 183',
-            '--c-primary-accent': '5 150 105',
-            '--c-secondary': '20 83 45',
-            '--c-secondary-deep': '5 46 22',
-            '--c-section': '6 78 59',
+          light: {
+            '--c-accent': '16 155 110',
+            '--c-accent-soft': '110 231 183',
+            '--c-accent-deep': '6 122 87',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '247 251 248',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '240 248 243',
+            '--c-line': '219 235 226',
+            '--c-content': '18 32 25',
+            '--c-muted': '100 122 110',
+            '--c-ink': '6 66 48',
+            '--c-on-ink': '255 255 255',
+            '--c-positive': '5 150 105',
+            '--c-danger': '200 40 50',
+          },
+          dark: {
+            '--c-accent': '52 211 153',
+            '--c-accent-soft': '110 231 183',
+            '--c-accent-deep': '16 185 129',
+            '--c-on-accent': '5 30 22',
+            '--c-page': '14 21 17',
+            '--c-surface': '21 31 25',
+            '--c-surface-2': '29 42 34',
+            '--c-line': '44 62 51',
+            '--c-content': '237 248 241',
+            '--c-muted': '146 170 156',
+            '--c-ink': '6 34 25',
+            '--c-on-ink': '237 248 241',
+            '--c-positive': '52 211 153',
+            '--c-danger': '248 113 113',
           },
         },
         sunset: {
           name: 'Sunset',
           swatch: '#F43F5E',
-          vars: {
-            '--c-primary': '244 63 94',
-            '--c-primary-light': '253 164 175',
-            '--c-primary-accent': '236 72 153',
-            '--c-secondary': '76 5 25',
-            '--c-secondary-deep': '67 6 22',
-            '--c-section': '131 24 67',
+          light: {
+            '--c-accent': '236 56 88',
+            '--c-accent-soft': '253 164 175',
+            '--c-accent-deep': '204 30 62',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '253 249 250',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '252 243 245',
+            '--c-line': '243 225 230',
+            '--c-content': '35 22 26',
+            '--c-muted': '128 106 113',
+            '--c-ink': '76 12 30',
+            '--c-on-ink': '255 255 255',
+            '--c-positive': '5 150 105',
+            '--c-danger': '200 16 46',
+          },
+          dark: {
+            '--c-accent': '251 113 133',
+            '--c-accent-soft': '253 164 175',
+            '--c-accent-deep': '236 56 88',
+            '--c-on-accent': '38 8 16',
+            '--c-page': '25 18 20',
+            '--c-surface': '35 25 28',
+            '--c-surface-2': '46 33 38',
+            '--c-line': '63 46 52',
+            '--c-content': '252 241 244',
+            '--c-muted': '178 155 162',
+            '--c-ink': '48 10 22',
+            '--c-on-ink': '252 241 244',
+            '--c-positive': '52 199 145',
+            '--c-danger': '251 113 133',
           },
         },
         royal: {
           name: 'Royal',
           swatch: '#7C3AED',
-          vars: {
-            '--c-primary': '124 58 237',
-            '--c-primary-light': '196 181 253',
-            '--c-primary-accent': '139 92 246',
-            '--c-secondary': '49 46 129',
-            '--c-secondary-deep': '30 27 75',
-            '--c-section': '55 48 163',
+          light: {
+            '--c-accent': '124 58 237',
+            '--c-accent-soft': '196 181 253',
+            '--c-accent-deep': '102 44 205',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '250 249 254',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '245 243 253',
+            '--c-line': '228 223 246',
+            '--c-content': '26 22 40',
+            '--c-muted': '113 106 133',
+            '--c-ink': '45 34 96',
+            '--c-on-ink': '255 255 255',
+            '--c-positive': '5 150 105',
+            '--c-danger': '200 30 60',
+          },
+          dark: {
+            '--c-accent': '167 139 250',
+            '--c-accent-soft': '196 181 253',
+            '--c-accent-deep': '139 92 246',
+            '--c-on-accent': '24 16 45',
+            '--c-page': '19 17 26',
+            '--c-surface': '28 25 38',
+            '--c-surface-2': '37 33 50',
+            '--c-line': '54 48 72',
+            '--c-content': '242 240 252',
+            '--c-muted': '164 158 186',
+            '--c-ink': '26 20 56',
+            '--c-on-ink': '242 240 252',
+            '--c-positive': '52 199 145',
+            '--c-danger': '248 113 113',
           },
         },
         monochrome: {
           name: 'Monochrome',
           swatch: '#171717',
-          vars: {
-            // Deep charcoal palette — much darker greys for a true B&W feel.
-            '--c-primary': '64 64 64',
-            '--c-primary-light': '90 90 90',
-            '--c-primary-accent': '38 38 38',
-            '--c-secondary': '23 23 23',
-            '--c-secondary-deep': '10 10 10',
-            '--c-section': '0 0 0',
+          light: {
+            // The accent ramp is kept deliberately tight (#1F1F1F -> #0A0A0A ->
+            // #333). The header is a gradient across all three, and a wide
+            // ramp made it lurch from near-black to mid-grey, which read as a
+            // rendering glitch rather than a design.
+            '--c-accent': '31 31 31',
+            '--c-accent-soft': '51 51 51',
+            '--c-accent-deep': '10 10 10',
+            '--c-on-accent': '255 255 255',
+            '--c-page': '250 250 250',
+            '--c-surface': '255 255 255',
+            '--c-surface-2': '244 244 244',
+            '--c-line': '228 228 228',
+            '--c-content': '10 10 10',
+            '--c-muted': '115 115 115',
+            '--c-ink': '10 10 10',
+            '--c-on-ink': '250 250 250',
+            '--c-positive': '82 82 82',
+            '--c-danger': '150 45 52',
+          },
+          dark: {
+            // Accent inverts: a near-black accent is invisible on a near-black
+            // page, so dark mode drives it to near-white and flips the text
+            // that sits on top of it.
+            '--c-accent': '235 235 235',
+            '--c-accent-soft': '186 186 186',
+            '--c-accent-deep': '255 255 255',
+            '--c-on-accent': '15 15 15',
+            '--c-page': '17 17 17',
+            '--c-surface': '26 26 26',
+            '--c-surface-2': '36 36 36',
+            '--c-line': '54 54 54',
+            '--c-content': '245 245 245',
+            '--c-muted': '161 161 161',
+            '--c-ink': '8 8 8',
+            '--c-on-ink': '245 245 245',
+            '--c-positive': '190 190 190',
+            '--c-danger': '220 110 110',
           },
         },
       };
@@ -389,11 +608,11 @@
 
       // Impact patio doors — flat price per unit (color multiplier still applies)
       const IMPACT_PATIO = [
-        { id: 'ipd-5',  label: "5' Impact Patio Door",       price: 5150.0  },
-        { id: 'ipd-6',  label: "6' Impact Patio Door",       price: 5975.0  },
-        { id: 'ipd-8',  label: "6'2\" – 8' Impact Patio Door", price: 7575.0  },
-        { id: 'ipd-9',  label: "9' Impact Patio Door",       price: 9325.0  },
-        { id: 'ipd-12', label: "12' Impact Patio Door",      price: 11075.0 },
+        { id: 'ipd-5',  label: "5' Impact Patio Door",       price: 6231.5  },
+        { id: 'ipd-6',  label: "6' Impact Patio Door",       price: 7229.75 },
+        { id: 'ipd-8',  label: "6'2\" – 8' Impact Patio Door", price: 9165.75 },
+        { id: 'ipd-9',  label: "9' Impact Patio Door",       price: 11283.25 },
+        { id: 'ipd-12', label: "12' Impact Patio Door",      price: 13400.75 },
       ];
 
       // Additional options — flat price, no color/tier impact
@@ -535,7 +754,7 @@
           <div
             role="tablist"
             aria-label={ariaLabel}
-            className="inline-flex rounded-full bg-slate-200/80 dark:bg-neutral-800 p-1 text-xs font-semibold"
+            className="inline-flex rounded-full bg-surface2 p-1 text-xs font-semibold"
           >
             {options.map((opt) => {
               const active = value === opt.value;
@@ -548,8 +767,8 @@
                   className={
                     'px-3 py-1.5 rounded-full transition-all whitespace-nowrap ' +
                     (active
-                      ? 'bg-white dark:bg-neutral-950 text-brand-orange shadow-sm'
-                      : 'text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white')
+                      ? 'bg-surface text-brand-orange shadow-sm'
+                      : 'text-muted hover:text-content')
                   }
                 >
                   {opt.label}
@@ -564,7 +783,7 @@
         return (
           <div
             className={
-              'rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm ' +
+              'rounded-2xl bg-surface border border-line shadow-sm ' +
               className
             }
           >
@@ -575,9 +794,13 @@
 
       function Pill({ children, tone = 'orange' }) {
         const tones = {
-          orange: 'bg-brand-orange/10 text-brand-orange ring-1 ring-brand-orange/30',
-          grey: 'bg-slate-200 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300',
-          navy: 'bg-brand-navy/10 text-brand-navy dark:text-brand-orangeLight ring-1 ring-brand-navy/30',
+          orange: 'bg-brand-orange/12 text-brand-orange ring-1 ring-brand-orange/30',
+          grey: 'bg-surface2 text-content ring-1 ring-line',
+          navy: 'bg-brand-orange/12 text-brand-orange ring-1 ring-brand-orange/30',
+          // For pills sitting ON the dark ink bar. Derived from the ink
+          // foreground rather than the accent, because on Monochrome the
+          // accent IS near-black and vanished against that bar.
+          onInk: 'bg-onInk/15 text-onInk ring-1 ring-onInk/25',
         };
         return (
           <span className={'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ' + tones[tone]}>
@@ -591,10 +814,10 @@
       // --------------------------------------------------------------------
       function ZoomControl({ zoom, onZoomIn, onZoomOut, onZoomReset }) {
         return (
-          <div className="inline-flex items-center rounded-full bg-slate-200/80 dark:bg-neutral-800 p-1 text-xs font-semibold">
+          <div className="inline-flex items-center rounded-full bg-surface2 p-1 text-xs font-semibold">
             <button
               onClick={onZoomOut}
-              className="w-8 h-7 rounded-full flex items-center justify-center text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors"
+              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors"
               aria-label="Zoom out"
               title="Zoom out"
             >
@@ -615,7 +838,7 @@
             </button>
             <button
               onClick={onZoomReset}
-              className="px-2 h-7 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors tabular-nums min-w-[3.25rem]"
+              className="px-2 h-7 rounded-full text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors tabular-nums min-w-[3.25rem]"
               aria-label="Reset zoom"
               title="Reset zoom"
             >
@@ -623,7 +846,7 @@
             </button>
             <button
               onClick={onZoomIn}
-              className="w-8 h-7 rounded-full flex items-center justify-center text-slate-700 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-950 hover:text-brand-orange transition-colors"
+              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors"
               aria-label="Zoom in"
               title="Zoom in"
             >
@@ -643,6 +866,92 @@
                 <path d="M11 8v6" />
               </svg>
             </button>
+          </div>
+        );
+      }
+
+      // Theme picker. A native <select> can't render the colour dot next to
+      // each name, so this is a custom listbox — the dot is the whole point,
+      // it's how you tell Ocean from Royal without applying them one by one.
+      function ThemeSelect({ value, onChange }) {
+        const [open, setOpen] = useState(false);
+        const entries = Object.entries(THEMES);
+        const current = THEMES[value] || THEMES.tempest;
+
+        const Dot = ({ color }) => (
+          <span
+            className="inline-block w-4 h-4 rounded-full ring-1 ring-black/10 shrink-0"
+            style={{ backgroundColor: color }}
+          />
+        );
+
+        return (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={open}
+              className="w-full flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-content hover:border-brand-orange/50 focus:outline-none focus:ring-2 focus:ring-brand-orange transition-colors"
+            >
+              <Dot color={current.swatch} />
+              <span className="flex-1 text-left">{current.name}</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={'w-4 h-4 text-muted transition-transform ' + (open ? 'rotate-180' : '')}
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {open && (
+              <div
+                role="listbox"
+                className="absolute left-0 right-0 mt-1 z-20 rounded-xl border border-line bg-surface shadow-lg overflow-hidden"
+              >
+                {entries.map(([key, t]) => {
+                  const active = key === value;
+                  return (
+                    <button
+                      key={key}
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => {
+                        onChange(key);
+                        setOpen(false);
+                      }}
+                      className={
+                        'w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors ' +
+                        (active
+                          ? 'bg-brand-orange/12 text-content font-semibold'
+                          : 'text-content hover:bg-surface2')
+                      }
+                    >
+                      <Dot color={t.swatch} />
+                      <span className="flex-1">{t.name}</span>
+                      {active && (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-3.5 h-3.5 text-brand-orange"
+                        >
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       }
@@ -667,14 +976,14 @@
           }
         };
         return (
-          <div className="pt-3 border-t border-slate-200 dark:border-neutral-800">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+          <div className="pt-3 border-t border-line">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
               About
             </div>
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm">
-                <div className="font-semibold text-slate-800 dark:text-neutral-100">Job Estimator</div>
-                <div className="text-xs text-slate-500 dark:text-neutral-400">
+                <div className="font-semibold text-content">Job Estimator</div>
+                <div className="text-xs text-muted">
                   {window.APP_VERSION || 'v0'}
                   {status ? ` • ${status}` : ''}
                 </div>
@@ -682,7 +991,7 @@
               <button
                 onClick={check}
                 disabled={busy}
-                className="rounded-lg bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 text-xs font-semibold px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-lg bg-surface2 hover:bg-line text-content text-xs font-semibold px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Check for updates
               </button>
@@ -694,7 +1003,7 @@
       function SwitchRow({ label, checked, onChange }) {
         return (
           <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
-            <span className="text-sm font-medium text-slate-700 dark:text-neutral-200">{label}</span>
+            <span className="text-sm font-medium text-content">{label}</span>
             <button
               type="button"
               role="switch"
@@ -702,7 +1011,7 @@
               onClick={() => onChange(!checked)}
               className={
                 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors ' +
-                (checked ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-neutral-700')
+                (checked ? 'bg-brand-orange' : 'bg-line')
               }
             >
               <span
@@ -761,7 +1070,7 @@
                 'w-9 h-9 rounded-full flex items-center justify-center transition-all ring-1 ' +
                 (open
                   ? 'bg-white text-brand-orange ring-white shadow-sm'
-                  : 'bg-white/15 text-white ring-white/30 hover:bg-white/25')
+                  : 'bg-onAccent/15 text-onAccent ring-onAccent/30 hover:bg-onAccent/25')
               }
               aria-label="Settings"
               aria-expanded={open}
@@ -783,12 +1092,12 @@
             </button>
 
             {open && (
-              <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-2xl bg-white dark:bg-neutral-900 text-slate-800 dark:text-neutral-100 shadow-xl ring-1 ring-slate-200 dark:ring-neutral-700 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-200 dark:border-neutral-800 flex items-center justify-between">
+              <div className="absolute right-0 mt-2 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-2xl bg-surface text-content shadow-xl ring-1 ring-line overflow-hidden">
+                <div className="px-4 py-3 border-b border-line flex items-center justify-between">
                   <div className="font-bold text-sm tracking-tight">Settings</div>
                   <button
                     onClick={() => setOpen(false)}
-                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-lg leading-none"
+                    className="text-muted hover:text-content text-lg leading-none"
                     aria-label="Close settings"
                   >
                     ×
@@ -797,7 +1106,7 @@
 
                 <div className="px-4 py-3 space-y-4">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
                       Mode
                     </div>
                     <Toggle
@@ -812,36 +1121,14 @@
                   </div>
 
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
                       Theme
                     </div>
-                    <div className="grid grid-cols-6 gap-1.5 mb-2">
-                      {Object.entries(THEMES).map(([key, t]) => {
-                        const active = colorTheme === key;
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => setColorTheme(key)}
-                            className={
-                              'h-9 rounded-lg ring-1 transition-all flex items-center justify-center ' +
-                              (active
-                                ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-neutral-900 ring-current scale-105'
-                                : 'ring-slate-200 dark:ring-neutral-700 hover:scale-105')
-                            }
-                            style={{ backgroundColor: t.swatch, color: t.swatch }}
-                            aria-label={t.name}
-                            title={t.name}
-                          />
-                        );
-                      })}
-                    </div>
-                    <div className="text-xs font-semibold text-slate-700 dark:text-neutral-200">
-                      {(THEMES[colorTheme] || THEMES.tempest).name}
-                    </div>
+                    <ThemeSelect value={colorTheme} onChange={setColorTheme} />
                   </div>
 
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
                       Zoom
                     </div>
                     <ZoomControl
@@ -853,7 +1140,7 @@
                   </div>
 
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
                       Product Picker
                     </div>
                     <Toggle
@@ -868,7 +1155,7 @@
                   </div>
 
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
                       Density
                     </div>
                     <Toggle
@@ -882,7 +1169,7 @@
                     />
                   </div>
 
-                  <div className="pt-3 border-t border-slate-200 dark:border-neutral-800 space-y-2.5">
+                  <div className="pt-3 border-t border-line space-y-2.5">
                     <SwitchRow
                       label="Show volume-tier hints"
                       checked={showTierHint}
@@ -924,13 +1211,13 @@
         setPickerMode,
       }) {
         return (
-          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-white">
+          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-onAccent">
             <div className="px-3 sm:px-8 py-2 sm:py-3 flex flex-row items-center gap-3 sm:gap-6">
               <div className="leading-tight min-w-0 flex-shrink">
                 <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
                   Tempest Windows
                 </h1>
-                <div className="text-[11px] sm:text-xs md:text-sm font-medium text-white/85 mt-0.5 truncate">
+                <div className="text-[11px] sm:text-xs md:text-sm font-medium text-onAccent/85 mt-0.5 truncate">
                   Job Estimator
                 </div>
               </div>
@@ -1093,7 +1380,7 @@
 
         const kpiCardPad = compact ? 'p-3' : 'p-5';
         const kpiCardLabel =
-          'text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-neutral-400 font-semibold';
+          'text-[10px] uppercase tracking-[0.2em] text-muted font-semibold';
         const kpiCardValue = (compact ? 'text-2xl' : 'text-3xl') + ' font-extrabold tabular-nums';
 
         return (
@@ -1102,14 +1389,14 @@
             <div
               className={
                 stickyTotals
-                  ? 'sticky top-0 z-30 -mx-4 sm:-mx-8 px-4 sm:px-8 py-2 bg-brand-greyBg/95 dark:bg-neutral-950/95 backdrop-blur'
+                  ? 'sticky top-0 z-30 -mx-4 sm:-mx-8 px-4 sm:px-8 py-2 bg-page/95 bg-page/95 backdrop-blur'
                   : ''
               }
             >
               <div className={'grid grid-cols-1 md:grid-cols-3 ' + d.kpiGap}>
                 <Card className={kpiCardPad}>
                   <div className={kpiCardLabel}>Total Units</div>
-                  <div className={'mt-1 ' + kpiCardValue + ' text-slate-900 dark:text-white'}>
+                  <div className={'mt-1 ' + kpiCardValue + ' text-content'}>
                     {previewTotalUnits}
                   </div>
                 </Card>
@@ -1119,7 +1406,7 @@
                 </Card>
                 <Card className={kpiCardPad}>
                   <div className={kpiCardLabel}>Volume Tier</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-neutral-100">
+                  <div className="mt-1 text-sm font-semibold text-content">
                     {tierLabel(previewTotalUnits)}
                   </div>
                 </Card>
@@ -1138,7 +1425,7 @@
                     }
                   >
                     <div className={compact ? 'text-xl' : 'text-2xl'}>⭐</div>
-                    <div className="flex-1 text-sm text-slate-800 dark:text-neutral-100">
+                    <div className="flex-1 text-sm text-content">
                       <span className="font-bold">
                         Add {t.needed} more unit{t.needed === 1 ? '' : 's'}
                       </span>{' '}
@@ -1152,11 +1439,11 @@
 
             {/* Estimator form */}
             <Card className="overflow-hidden">
-              <div className={'bg-brand-orange text-white flex items-center justify-between gap-3 ' + d.sectionTight}>
+              <div className={'bg-brand-orange text-onAccent flex items-center justify-between gap-3 ' + d.sectionTight}>
                 <div className="font-bold tracking-tight">Add an Item</div>
                 <button
                   onClick={resetAll}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-red hover:bg-red-700 text-white px-3 py-1.5 text-xs font-bold tracking-wide shadow-sm transition-colors ring-1 ring-white/20"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-danger hover:brightness-110 text-white px-3 py-1.5 text-xs font-bold tracking-wide shadow-sm transition-colors ring-1 ring-white/25"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1178,7 +1465,7 @@
                 {isSplitPicker ? (
                   <Fragment>
                     <div className="md:col-span-6">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted">
                         Category
                       </label>
                       <select
@@ -1190,7 +1477,7 @@
                           // wrong line.
                           setForm((f) => ({ ...f, familyKey: e.target.value, itemId: '' }))
                         }
-                        className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                        className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-orange"
                       >
                         <option value="">Select category…</option>
                         {FAMILIES.map((fam) => (
@@ -1202,7 +1489,7 @@
                     </div>
 
                     <div className="md:col-span-6">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted">
                         Type
                       </label>
                       <select
@@ -1210,7 +1497,7 @@
                         value={form.itemId}
                         onChange={(e) => setForm((f) => ({ ...f, itemId: e.target.value }))}
                         disabled={!form.familyKey}
-                        className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="">
                           {form.familyKey ? 'Select type…' : 'Pick a category first…'}
@@ -1228,7 +1515,7 @@
                   /* Classic: one long grouped list. Setting familyKey alongside
                      itemId keeps state valid if the rep switches back to split. */
                   <div className="md:col-span-5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">
                       Product Type
                     </label>
                     <select
@@ -1239,7 +1526,7 @@
                         const picked = ITEM_BY_ID[id];
                         setForm((f) => ({ ...f, itemId: id, familyKey: picked ? picked.family : '' }));
                       }}
-                      className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                      className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-orange"
                     >
                       <option value="">Select product type…</option>
                       {FAMILIES.map((fam) => (
@@ -1256,7 +1543,7 @@
                 )}
 
                 <div className={isSplitPicker ? 'md:col-span-3' : 'md:col-span-2'}>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted">
                     Quantity
                   </label>
                   <input
@@ -1266,12 +1553,12 @@
                     placeholder="0"
                     value={form.qty}
                     onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange tabular-nums"
+                    className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-semibold text-content focus:outline-none focus:ring-2 focus:ring-brand-orange tabular-nums"
                   />
                 </div>
 
                 <div className={isSplitPicker ? 'md:col-span-9' : 'md:col-span-5'}>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted">
                     Color
                   </label>
                   <select
@@ -1280,7 +1567,7 @@
                     onChange={(e) => setForm((f) => ({ ...f, colorKey: e.target.value }))}
                     disabled={currentItem && currentItem.tierType === 'flat'}
                     title={currentItem && currentItem.tierType === 'flat' ? 'Color does not apply to add-on options' : ''}
-                    className="mt-1 w-full rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50"
+                    className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50"
                   >
                     {COLORS.map((c) => (
                       <option key={c.key} value={c.key}>
@@ -1294,28 +1581,28 @@
                 <div className="md:col-span-12">
                   <div
                     className={
-                      'rounded-xl bg-brand-greyBg dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 ' +
+                      'rounded-xl bg-page bg-surface2 border border-line flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 ' +
                       (compact ? 'px-3 py-2' : 'px-4 py-3')
                     }
                   >
-                    <div className="flex-1 text-sm text-slate-700 dark:text-neutral-200">
+                    <div className="flex-1 text-sm text-content">
                       {currentItem ? (
                         <Fragment>
                           <span className="font-semibold">{currentItem.label}</span>
-                          <span className="text-slate-500 dark:text-neutral-400">
+                          <span className="text-muted">
                             {' '}
                             • {currentItem.family}
                           </span>
                         </Fragment>
                       ) : (
-                        <span className="text-slate-500 dark:text-neutral-400">
+                        <span className="text-muted">
                           Pick a product type to preview the price.
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-neutral-400 font-semibold">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-muted font-semibold">
                           Line Price
                         </div>
                         <div className="text-xl font-extrabold text-brand-orange tabular-nums">
@@ -1325,7 +1612,7 @@
                       <button
                         onClick={addLine}
                         disabled={!form.itemId || !qtyNum}
-                        className="rounded-xl bg-brand-navy hover:bg-brand-navyDeep text-white px-4 py-2.5 text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="rounded-xl bg-ink hover:brightness-125 text-onInk px-4 py-2.5 text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         + Add to Job
                       </button>
@@ -1337,18 +1624,18 @@
 
             {/* Job line items */}
             <Card className="overflow-hidden">
-              <div className={'bg-brand-section text-white flex items-center justify-between ' + d.section}>
+              <div className={'bg-ink text-onInk flex items-center justify-between ' + d.section}>
                 <div className="font-bold tracking-tight">Job Line Items</div>
-                <Pill tone="orange">{lines.length} line{lines.length === 1 ? '' : 's'}</Pill>
+                <Pill tone="onInk">{lines.length} line{lines.length === 1 ? '' : 's'}</Pill>
               </div>
               {lines.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 dark:text-neutral-400 text-sm">
+                <div className="p-8 text-center text-muted text-sm">
                   No items added yet. Build your estimate above.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-100 dark:bg-neutral-800/50 text-slate-700 dark:text-neutral-300 uppercase text-[10px] tracking-wider">
+                    <thead className="bg-surface2 text-content uppercase text-[10px] tracking-wider">
                       <tr>
                         <th className="px-4 py-2 text-left">Item</th>
                         <th className="px-4 py-2 text-left">Family</th>
@@ -1358,20 +1645,20 @@
                         <th className="px-4 py-2"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-neutral-800">
+                    <tbody className="divide-y divide-line">
                       {lines.map((ln, idx) => {
                         const item = ITEM_BY_ID[ln.itemId];
                         const color = COLORS.find((c) => c.key === ln.colorKey);
                         const td = d.rowX + ' ' + d.rowY;
                         return (
-                          <tr key={ln.key} className="hover:bg-slate-50 dark:hover:bg-neutral-800/40">
-                            <td className={td + ' font-semibold text-slate-900 dark:text-white'}>
+                          <tr key={ln.key} className="hover:bg-surface2">
+                            <td className={td + ' font-semibold text-content'}>
                               {item ? item.label : '—'}
                             </td>
-                            <td className={td + ' text-slate-600 dark:text-neutral-400'}>
+                            <td className={td + ' text-muted'}>
                               {item ? item.family : '—'}
                             </td>
-                            <td className={td + ' text-slate-600 dark:text-neutral-400'}>
+                            <td className={td + ' text-muted'}>
                               {!item || item.tierType === 'flat' ? '—' : color ? color.label : '—'}
                             </td>
                             <td className={td + ' text-right'}>
@@ -1387,7 +1674,7 @@
                                     ),
                                   );
                                 }}
-                                className="w-16 text-right tabular-nums font-medium text-slate-900 dark:text-white bg-transparent rounded-md px-1.5 py-1 border border-transparent hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-white dark:hover:bg-neutral-950 focus:bg-white dark:focus:bg-neutral-950 focus:ring-2 focus:ring-brand-orange focus:outline-none focus:border-transparent"
+                                className="w-16 text-right tabular-nums font-medium text-content bg-transparent rounded-md px-1.5 py-1 border border-transparent hover:border-line hover:border-line hover:bg-white hover:bg-surface focus:bg-white focus:bg-surface focus:ring-2 focus:ring-brand-orange focus:outline-none focus:border-transparent"
                               />
                             </td>
                             <td className={td + ' text-right tabular-nums font-bold text-brand-orange'}>
@@ -1396,7 +1683,7 @@
                             <td className={td + ' text-right'}>
                               <button
                                 onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}
-                                className="text-slate-400 hover:text-brand-red font-bold text-lg leading-none"
+                                className="text-muted hover:text-brand-red font-bold text-lg leading-none"
                                 aria-label="Remove line"
                               >
                                 ×
@@ -1406,15 +1693,15 @@
                         );
                       })}
                     </tbody>
-                    <tfoot className="bg-slate-50 dark:bg-neutral-800/30">
+                    <tfoot className="bg-surface2">
                       <tr>
                         <td
                           colSpan="4"
-                          className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-slate-600 dark:text-neutral-300"
+                          className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-muted"
                         >
                           Subtotal
                         </td>
-                        <td className="px-4 py-2 text-right text-sm font-bold text-slate-900 dark:text-white tabular-nums">
+                        <td className="px-4 py-2 text-right text-sm font-bold text-content tabular-nums">
                           {fmt(jobGrossTotal)}
                         </td>
                         <td></td>
@@ -1433,10 +1720,10 @@
                           <td></td>
                         </tr>
                       )}
-                      <tr className="border-t-2 border-slate-300 dark:border-neutral-700">
+                      <tr className="border-t-2 border-line">
                         <td
                           colSpan="4"
-                          className="px-4 py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-slate-700 dark:text-neutral-200"
+                          className="px-4 py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-content"
                         >
                           Total
                         </td>
@@ -1514,28 +1801,29 @@
 
       function CatalogTable({ title, headers, rows, tone = 'orange', muted = false, density = 'comfortable', note }) {
         const compact = density === 'compact';
-        const headBg =
-          tone === 'orange'
-            ? 'bg-brand-orange'
-            : tone === 'navy'
-              ? 'bg-brand-navy'
-              : tone === 'grey'
-                ? 'bg-neutral-700'
-                : tone === 'muted'
-                  ? 'bg-slate-500'
-                  : 'bg-brand-orange';
+        // Foreground is paired with each background rather than hardcoded to
+        // white: on Monochrome dark the accent is near-white and the ink is
+        // near-black, so a single fixed text colour is unreadable on one of
+        // them no matter which you pick.
+        const headStyles = {
+          orange: 'bg-brand-orange text-onAccent',
+          navy: 'bg-ink text-onInk',
+          grey: 'bg-ink text-onInk',
+          muted: 'bg-muted text-surface',
+        };
+        const headClass = headStyles[tone] || headStyles.orange;
         const headerPad = compact ? 'px-4 py-1.5' : 'px-5 py-2.5';
         const thPad = compact ? 'px-3 py-1' : 'px-3 py-2';
         const tdPad = compact ? 'px-3 py-1' : 'px-3 py-2';
         return (
           <Card className="overflow-hidden">
-            <div className={'text-white font-bold tracking-tight text-sm ' + headBg + ' ' + headerPad}>
+            <div className={'font-bold tracking-tight text-sm ' + headClass + ' ' + headerPad}>
               {title}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-neutral-800/60 text-slate-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider">
+                  <tr className="bg-surface2 text-content text-[11px] uppercase tracking-wider">
                     {headers.map((h, i) => (
                       <th key={i} className={thPad + ' ' + (i === 0 ? 'text-left' : 'text-right')}>
                         {h}
@@ -1543,13 +1831,13 @@
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-neutral-800">
+                <tbody className="divide-y divide-line">
                   {rows.map((r, i) => (
                     <tr
                       key={i}
                       className={
-                        'hover:bg-slate-50 dark:hover:bg-neutral-800/40 ' +
-                        (muted ? 'text-slate-400 dark:text-neutral-500 italic' : '')
+                        'hover:bg-surface2 ' +
+                        (muted ? 'text-muted italic' : '')
                       }
                     >
                       {r.map((cell, j) => (
@@ -1559,8 +1847,8 @@
                             tdPad +
                             ' ' +
                             (j === 0
-                              ? 'text-left font-semibold ' + (muted ? '' : 'text-slate-900 dark:text-white')
-                              : 'text-right tabular-nums ' + (muted ? '' : 'text-slate-700 dark:text-neutral-200'))
+                              ? 'text-left font-semibold ' + (muted ? '' : 'text-content')
+                              : 'text-right tabular-nums ' + (muted ? '' : 'text-content'))
                           }
                         >
                           {cell}
@@ -1574,7 +1862,7 @@
             {note && (
               <div
                 className={
-                  'border-t border-slate-200 dark:border-neutral-800 text-[11px] italic text-slate-500 dark:text-neutral-400 ' +
+                  'border-t border-line text-[11px] italic text-muted ' +
                   (compact ? 'px-3 py-1.5' : 'px-4 py-2')
                 }
               >
@@ -1598,8 +1886,8 @@
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brand-orange font-bold">Catalog</div>
-                  <div className="text-xl font-extrabold text-slate-900 dark:text-white">Par Prices & Size Limits</div>
-                  <div className="text-sm text-slate-500 dark:text-neutral-400 mt-1">
+                  <div className="text-xl font-extrabold text-content">Par Prices & Size Limits</div>
+                  <div className="text-sm text-muted mt-1">
                     Prices and sizes laid out side-by-side, matching the master spreadsheet. Apply the color factor
                     for Desert Clay or Black / Bronze.
                   </div>
@@ -1718,9 +2006,11 @@
         const [stickyTotals, setStickyTotals] = usePersistedState('stickyTotals', true);
         const [pickerMode, setPickerMode] = usePersistedState('pickerMode', 'split');
 
-        // Lifted Pricing Tool state — persists when the user toggles to Catalog.
-        const [form, setForm] = useState(BLANK_FORM);
-        const [lines, setLines] = useState([]);
+        // Lifted Pricing Tool state. Persisted so a refresh — including the
+        // service worker's own update reload — never loses a job mid-
+        // appointment. The Reset button is the only thing that clears it.
+        const [form, setForm] = usePersistedState('form', BLANK_FORM);
+        const [lines, setLines] = usePersistedState('lines', []);
         const [resetTick, setResetTick] = useState(0);
 
         useEffect(() => {
@@ -1729,12 +2019,18 @@
           else root.classList.remove('dark');
         }, [theme]);
 
+        // Palette depends on BOTH the theme and light/dark, so this reruns on
+        // either. Also syncs the browser UI colour (iOS status bar, Android
+        // chrome) so the app doesn't sit in a mismatched frame.
         useEffect(() => {
           const t = THEMES[colorTheme] || THEMES.tempest;
-          Object.entries(t.vars).forEach(([k, v]) => {
+          const palette = (theme === 'dark' ? t.dark : t.light) || t.light;
+          Object.entries(palette).forEach(([k, v]) => {
             document.documentElement.style.setProperty(k, v);
           });
-        }, [colorTheme]);
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', 'rgb(' + palette['--c-accent'].split(' ').join(',') + ')');
+        }, [colorTheme, theme]);
 
         const ZOOM_STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0];
         const stepZoom = (dir) => {
@@ -1746,7 +2042,7 @@
         };
 
         return (
-          <div className="min-h-screen flex flex-col bg-brand-greyBg dark:bg-neutral-950 transition-colors">
+          <div className="min-h-screen flex flex-col bg-page bg-page transition-colors">
             <Header
               view={view}
               setView={setView}
@@ -1790,7 +2086,7 @@
                 <Catalog density={density} />
               </div>
             </main>
-            <footer className="px-5 sm:px-8 py-4 text-[11px] text-slate-500 dark:text-neutral-400 border-t border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row gap-2 justify-between">
+            <footer className="px-5 sm:px-8 py-4 text-[11px] text-muted border-t border-line flex flex-col sm:flex-row gap-2 justify-between">
               <div>© Tempest Windows — Sales Rep Pricing Calculator</div>
               <div>
                 Built from <span className="font-mono">JOB ESTIMATOR MASTER.xlsx</span>
