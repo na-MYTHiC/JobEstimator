@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.12.0';
+      window.APP_VERSION = 'v1.13.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -330,9 +330,9 @@
       const THEMES = {
         tempest: {
           name: 'Tempest',
-          swatch: '#D67A1B',
+          swatch: '#F97316',
           light: {
-            '--c-accent': '214 122 27',
+            '--c-accent': '239 101 6',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 247 250',
             '--c-surface': '255 255 255',
@@ -346,8 +346,8 @@
             '--c-danger': '239 68 68',
           },
           dark: {
-            '--c-accent': '235 155 70',
-            '--c-on-accent': '28 20 10',
+            '--c-accent': '249 115 22',
+            '--c-on-accent': '13 13 18',
             '--c-page': '13 13 18',
             '--c-surface': '22 22 31',
             '--c-surface-2': '31 31 43',
@@ -355,6 +355,20 @@
             '--c-content': '244 244 247',
             '--c-muted': '138 138 153',
             '--c-ink': '8 8 12',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
+          amoled: {
+            '--c-accent': '249 115 22',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -391,6 +405,20 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
+          amoled: {
+            '--c-accent': '124 92 255',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
         },
         sakura: {
           name: 'Sakura',
@@ -419,6 +447,20 @@
             '--c-content': '244 244 247',
             '--c-muted': '138 138 153',
             '--c-ink': '8 8 12',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
+          amoled: {
+            '--c-accent': '255 107 157',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -455,6 +497,20 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
+          amoled: {
+            '--c-accent': '110 103 234',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
         },
         forest: {
           name: 'Forest',
@@ -487,34 +543,16 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
-        },
-        sunset: {
-          name: 'Sunset',
-          swatch: '#F97316',
-          light: {
-            '--c-accent': '239 101 6',
-            '--c-on-accent': '255 255 255',
-            '--c-page': '247 247 250',
-            '--c-surface': '255 255 255',
-            '--c-surface-2': '240 240 245',
-            '--c-line': '227 227 236',
-            '--c-content': '20 20 28',
-            '--c-muted': '101 101 122',
-            '--c-ink': '20 20 28',
-            '--c-on-ink': '255 255 255',
-            '--c-positive': '12 135 94',
-            '--c-danger': '239 68 68',
-          },
-          dark: {
-            '--c-accent': '249 115 22',
+          amoled: {
+            '--c-accent': '16 185 129',
             '--c-on-accent': '13 13 18',
-            '--c-page': '13 13 18',
-            '--c-surface': '22 22 31',
-            '--c-surface-2': '31 31 43',
-            '--c-line': '42 42 56',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
             '--c-content': '244 244 247',
-            '--c-muted': '138 138 153',
-            '--c-ink': '8 8 12',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -551,6 +589,20 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
+          amoled: {
+            '--c-accent': '239 68 68',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
         },
         solstice: {
           name: 'Solstice',
@@ -579,6 +631,20 @@
             '--c-content': '244 244 247',
             '--c-muted': '138 138 153',
             '--c-ink': '8 8 12',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
+          amoled: {
+            '--c-accent': '245 158 11',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -615,6 +681,20 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
+          amoled: {
+            '--c-accent': '167 139 250',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
         },
         ocean: {
           name: 'Ocean',
@@ -643,6 +723,20 @@
             '--c-content': '244 244 247',
             '--c-muted': '138 138 153',
             '--c-ink': '8 8 12',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
+          amoled: {
+            '--c-accent': '6 182 212',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -679,6 +773,20 @@
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
           },
+          amoled: {
+            '--c-accent': '228 44 84',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
         },
         snow: {
           name: 'Snow',
@@ -707,6 +815,20 @@
             '--c-content': '244 244 247',
             '--c-muted': '138 138 153',
             '--c-ink': '8 8 12',
+            '--c-on-ink': '244 244 247',
+            '--c-positive': '16 185 129',
+            '--c-danger': '239 68 68',
+          },
+          amoled: {
+            '--c-accent': '238 242 255',
+            '--c-on-accent': '13 13 18',
+            '--c-page': '0 0 0',
+            '--c-surface': '10 10 13',
+            '--c-surface-2': '21 21 28',
+            '--c-line': '36 36 46',
+            '--c-content': '244 244 247',
+            '--c-muted': '136 136 148',
+            '--c-ink': '22 22 31',
             '--c-on-ink': '244 244 247',
             '--c-positive': '16 185 129',
             '--c-danger': '239 68 68',
@@ -1385,6 +1507,7 @@
                       options={[
                         { value: 'light', label: 'Light' },
                         { value: 'dark', label: 'Dark' },
+                        { value: 'amoled', label: 'AMOLED' },
                       ]}
                     />
                   </div>
@@ -2367,8 +2490,10 @@
 
         useEffect(() => {
           const root = document.documentElement;
-          if (theme === 'dark') root.classList.add('dark');
-          else root.classList.remove('dark');
+          // AMOLED is a dark mode, so it has to carry the `dark` class too or
+          // the handful of dark: utilities in the markup would render light.
+          if (theme === 'light') root.classList.remove('dark');
+          else root.classList.add('dark');
         }, [theme]);
 
         // Palette depends on BOTH the theme and light/dark, so this reruns on
@@ -2376,7 +2501,7 @@
         // chrome) so the app doesn't sit in a mismatched frame.
         useEffect(() => {
           const t = THEMES[colorTheme] || THEMES.tempest;
-          const palette = (theme === 'dark' ? t.dark : t.light) || t.light;
+          const palette = t[theme] || t.light;
           Object.entries(palette).forEach(([k, v]) => {
             document.documentElement.style.setProperty(k, v);
           });
