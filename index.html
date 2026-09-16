@@ -18,63 +18,44 @@
     <link rel="shortcut icon" href="icon-192.png" />
     <script>
       // ------------------------------------------------------------------
-      // Auto-update via service worker.
+      // Service worker — MANUAL UPDATES ONLY.
       //
-      // The reload on controllerchange fixes the classic "needs two refreshes"
-      // PWA trap: sw.js serves assets cache-first, so the refresh that
-      // discovers a new deploy has ALREADY rendered with the old cached
-      // JS/CSS. Raising a banner when the new worker takes over lets a single
-      // tap swap everything over atomically.
+      // The app never updates itself. Whatever build is cached is the build
+      // the rep keeps until somebody opens Settings and taps "Check for
+      // updates", because a quote changing mid-appointment is worse than a
+      // quote being a few days old.
       //
-      // The worker always activates (sw.js calls skipWaiting) — the page
-      // decides when to reload. Ignore the banner and the next cold start is
-      // served from the new worker's cache regardless.
+      // So there is deliberately nothing here that looks for a new version:
+      // no periodic reg.update(), no re-check when the app comes back to the
+      // foreground, no controllerchange banner. sw.js does the matching half
+      // (stable cache, install never overwrites, navigations served from
+      // cache with no background re-fetch) — see the comments in that file.
+      //
+      // Everything that can pull a new build hangs off jeCheckForUpdates /
+      // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.4.1';
-      window.__jeUpdatePending = false;
-      window.jeShowUpdateBanner = function () {
-        var el = document.getElementById('update-banner');
-        if (el) el.hidden = false;
-      };
-      function jeUpdateReady() {
-        if (window.__jeUpdatePending) return;
-        window.__jeUpdatePending = true;
-        window.jeShowUpdateBanner();
-      }
+      window.APP_VERSION = 'v1.5.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
-        // Captured before registering: if there's no controller yet this is a
-        // first-ever install, where controllerchange fires as a normal part of
-        // setup and is NOT an update to announce.
-        var hadController = !!navigator.serviceWorker.controller;
-        navigator.serviceWorker.addEventListener('controllerchange', function () {
-          if (!hadController) return;
-          jeUpdateReady();
-        });
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
-          // when it checks sw.js for a new version. GitHub Pages serves
-          // sw.js with max-age=600 by default, so without this a deploy
-          // could go unnoticed for ten minutes.
+          // when it checks sw.js. GitHub Pages serves sw.js with
+          // max-age=600, so without this a manual check could read a
+          // ten-minute-old copy.
           navigator.serviceWorker
             .register('sw.js', { updateViaCache: 'none' })
             .then(function (reg) {
               window.__jeSwReg = reg;
-              // Shouldn't happen now that install skips waiting, but a worker
-              // left waiting by an older build would otherwise sit forever.
+              // A worker left waiting by an older build would otherwise sit
+              // there forever. Promoting it is safe: the worker's code can
+              // change without touching which app version is cached.
               if (reg.waiting && navigator.serviceWorker.controller) {
                 reg.waiting.postMessage({ type: 'je-skip-waiting' });
               }
-              // An installed PWA can sit "open" for days without a cold
-              // start, so re-check whenever it comes back to the foreground.
-              // Cheap: conditional request that 304s unless sw.js changed.
-              document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'visible') reg.update().catch(function () {});
-              });
             })
             .catch(function () {});
         });
       }
-      // Called from the Settings "Check for updates" button.
+      // Called only from the Settings "Check for updates" button.
       window.jeCheckForUpdates = function () {
         if (window.__jeSwReg && window.__jeSwReg.update) {
           return window.__jeSwReg.update();
@@ -111,28 +92,62 @@
           });
       };
 
-      // Have the active worker re-pull the shell from the network, then
-      // reload onto it. A bare location.reload() is not enough: the worker
-      // answers navigations cache-first, so a plain reload just re-serves the
-      // stale shell it already has.
-      window.jeForceRefresh = function () {
+      // Replace the cached build with what's deployed, then reload onto it.
+      //
+      // A bare location.reload() is NEVER sufficient here: the worker answers
+      // navigations from cache, so a plain reload just re-serves the same
+      // stale shell — the app appears to update and doesn't. Something has to
+      // invalidate the cache first, and this tries two independent ways so a
+      // missing or idle worker can't leave the app stranded.
+      window.jeForceRefresh = async function () {
         var sw = navigator.serviceWorker;
-        if (!sw || !sw.controller) {
-          location.reload();
-          return;
+
+        // Preferred: the worker re-pulls the whole shell list in one go.
+        // Note .controller can be null on a page the worker hasn't claimed
+        // yet, so fall back to the registration's active worker rather than
+        // assuming there's nobody to talk to.
+        try {
+          var reg = window.__jeSwReg || (sw && (await sw.getRegistration()));
+          var target = (sw && sw.controller) || (reg && reg.active);
+          if (target) {
+            var refreshed = await new Promise(function (resolve) {
+              function onMsg(e) {
+                if (e.data && e.data.type === 'je-shell-refreshed') {
+                  sw.removeEventListener('message', onMsg);
+                  resolve(true);
+                }
+              }
+              sw.addEventListener('message', onMsg);
+              target.postMessage({ type: 'je-refresh-shell' });
+              setTimeout(function () {
+                sw.removeEventListener('message', onMsg);
+                resolve(false);
+              }, 5000);
+            });
+            if (refreshed) {
+              location.reload();
+              return;
+            }
+          }
+        } catch (e) {
+          /* fall through to the backstop */
         }
-        var reloaded = false;
-        function go() {
-          if (reloaded) return;
-          reloaded = true;
-          location.reload();
+
+        // Backstop: evict the cached shell from the page itself. The Cache API
+        // is available here too, so this works with no cooperation from the
+        // worker at all — the next navigation misses and has to go to the
+        // network. Cache name must match CACHE in sw.js.
+        try {
+          var cache = await caches.open('je-shell');
+          await Promise.all(
+            ['./', './index.html'].map(function (u) {
+              return cache.delete(u);
+            }),
+          );
+        } catch (e) {
+          /* nothing left to try — reload and hope */
         }
-        sw.addEventListener('message', function (e) {
-          if (e.data && e.data.type === 'je-shell-refreshed') go();
-        });
-        sw.controller.postMessage({ type: 'je-refresh-shell' });
-        // Never hang on a worker that doesn't answer — reload anyway.
-        setTimeout(go, 5000);
+        location.reload();
       };
     </script>
     <script>
@@ -220,52 +235,6 @@
         --c-positive: 5 150 105;
         --c-danger: 200 16 46;
       }
-      /* Update banner. `display` lives here rather than in an inline style so
-         the `hidden` attribute actually works — an inline `display:flex` beats
-         the UA stylesheet's `[hidden] { display:none }` and pinned the banner
-         permanently on screen. Both rules being in the stylesheet lets the
-         more specific `[hidden]` selector win. */
-      #update-banner {
-        position: fixed;
-        left: 12px;
-        right: 12px;
-        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-        z-index: 100;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        max-width: 520px;
-        margin: 0 auto;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: rgb(var(--c-ink));
-        color: rgb(var(--c-on-ink));
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-        font-size: 14px;
-      }
-      #update-banner[hidden] {
-        display: none;
-      }
-      #update-banner-reload {
-        background: rgb(var(--c-accent));
-        color: rgb(var(--c-on-accent));
-        border: none;
-        padding: 8px 14px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 13px;
-        cursor: pointer;
-      }
-      #update-banner-dismiss {
-        background: transparent;
-        border: none;
-        color: rgb(var(--c-on-ink) / 0.7);
-        font-size: 22px;
-        line-height: 1;
-        cursor: pointer;
-        padding: 0 6px;
-      }
-
       /* Push the header below the iOS status bar / Dynamic Island when the
          app is launched from the Home Screen (standalone PWA mode). */
       .app-header {
@@ -317,36 +286,6 @@
     </style>
   </head>
   <body class="bg-page bg-page transition-colors duration-200">
-    <!-- Persistent update banner. Raised by the service-worker controllerchange
-         handler above. Lives outside the React tree so it works even if the
-         app itself fails to boot. -->
-    <div id="update-banner" role="status" hidden>
-      <div style="flex:1;line-height:1.35;">
-        <strong style="display:block;font-weight:700;">Update available</strong>
-        <span style="opacity:0.75;">Tap reload to apply it.</span>
-      </div>
-      <button id="update-banner-reload">Reload</button>
-      <button id="update-banner-dismiss" aria-label="Dismiss update banner">&times;</button>
-    </div>
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var reload = document.getElementById('update-banner-reload');
-        var dismiss = document.getElementById('update-banner-dismiss');
-        if (reload) reload.addEventListener('click', function () {
-          var b = document.getElementById('update-banner');
-          if (b) b.hidden = true;
-          window.__jeUpdatePending = false;
-          location.reload();
-        });
-        if (dismiss) dismiss.addEventListener('click', function () {
-          var b = document.getElementById('update-banner');
-          if (b) b.hidden = true;
-          // Cleared so a later "Check for updates" reports honestly instead of
-          // still thinking an update is outstanding.
-          window.__jeUpdatePending = false;
-        });
-      });
-    </script>
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react">
@@ -1053,14 +992,22 @@
           setBusy(true);
           setStatus('Checking…');
           try {
-            const [deployed] = await Promise.all([
-              window.jeFetchDeployedVersion
-                ? window.jeFetchDeployedVersion()
-                : Promise.resolve(null),
-              // Still kick the normal worker update — if sw.js did change,
-              // this is the path that cleans up the old caches properly.
-              window.jeCheckForUpdates ? window.jeCheckForUpdates() : Promise.resolve(),
-            ]);
+            // Kick the worker's own code update, but deliberately DON'T wait
+            // on it. Measured at ~2.8s locally and worse on cellular, and it
+            // has no bearing on the answer — blocking the button on it just
+            // makes it look dead. The probe is both fast (~5ms) and
+            // authoritative about what's deployed.
+            if (window.jeCheckForUpdates) {
+              try {
+                const p = window.jeCheckForUpdates();
+                if (p && p.catch) p.catch(() => {});
+              } catch (e) {
+                /* worker update is best-effort */
+              }
+            }
+            const deployed = window.jeFetchDeployedVersion
+              ? await window.jeFetchDeployedVersion()
+              : null;
             const running = window.APP_VERSION || 'v0';
 
             if (deployed === null) {

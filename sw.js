@@ -1,27 +1,36 @@
-// Job Estimator service worker — minimal app-shell cache.
+// Job Estimator service worker — app-shell cache, pinned until asked.
 //
-// Strategy:
-//   - On install, pre-cache the static app shell (HTML, manifest, icons, logo).
-//   - For HTML navigations, serve the cached shell immediately AND refresh it
-//     in the background. That means a single refresh always lands on the new
-//     build once the new worker activates.
-//   - For same-origin assets (icons, logo, manifest), serve cache-first for
-//     instant loads, then background-fetch.
-//   - Cross-origin (React/Babel/Tailwind CDN) is untouched — the browser HTTP
-//     cache handles those.
+// UPDATES ARE MANUAL. A rep mid-appointment must never have the app change
+// underneath them, so the build in the cache is the build they keep until
+// somebody taps Settings → Check for updates. Nothing here goes looking for
+// a new version on its own.
 //
-// Version bumps: bump VERSION on every deploy so the activate step wipes the
-// old cache and forces the app shell to be re-fetched cleanly.
+// What that costs, deliberately:
+//   - The cache name is STABLE, not per-deploy. A versioned name would mean a
+//     new worker starts from an empty cache and re-downloads the shell, which
+//     is an auto-update by another route.
+//   - Install only fills entries that are MISSING. It never overwrites, so a
+//     newly installed worker cannot swap the app version out from under a
+//     device that already has one.
+//   - Navigations are served purely from cache, with no background re-fetch.
+//     A background refresh would quietly stage new code for the next reload.
 //
-// Forgetting that bump used to strand every installed app permanently: the
-// browser saw an identical sw.js, installed nothing, and this worker kept
-// serving the old shell from cache with no way to notice. Settings → Check
-// for updates is now the safety net — it reads the deployed APP_VERSION off
-// the network (the 'je-version-probe' branch below) and, if it differs from
-// what's running, drives 'je-refresh-shell' to re-pull the shell. Bumping
-// VERSION is still the right thing to do; it just isn't load-bearing.
+// Exactly one thing overwrites the shell: the 'je-refresh-shell' message,
+// which only the Check for updates button sends. The page decides what's
+// deployed by reading APP_VERSION off the network ('je-version-probe' below),
+// which needs no cooperation from this file — so a deploy that forgets to
+// touch sw.js is still found.
+//
+// Note the worker's own CODE still updates on its own (skipWaiting +
+// clients.claim below). That's intentional and is not an app update: fixes to
+// this file should land, and because install never overwrites, adopting a new
+// worker leaves the cached app version exactly where it was.
 
-const VERSION = 'je-v6';
+const CACHE = 'je-shell';
+
+// Legacy per-deploy cache names from builds before updates were pinned.
+// Cleaned up on activate so they don't sit around forever.
+const LEGACY_CACHES = ['je-v1', 'je-v2', 'je-v3', 'je-v4', 'je-v5', 'je-v6'];
 const SHELL = [
   './',
   './index.html',
@@ -35,20 +44,27 @@ const SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(VERSION).then((cache) =>
-      // `cache: 'reload'` bypasses the HTTP cache so we don't repopulate the
-      // new cache with the exact stale bytes it was built to replace.
-      Promise.all(
-        SHELL.map((url) =>
-          fetch(new Request(url, { cache: 'reload' }))
-            .then((res) => (res.ok ? cache.put(url, res) : null))
-            .catch(() => null),
-        ),
-      ),
-    ),
+    caches.open(CACHE).then(async (cache) => {
+      // Fill gaps only. On a first install the cache is empty and this pulls
+      // the whole shell; on a worker update every entry is already there and
+      // this does nothing, which is what keeps the app version pinned.
+      // `cache: 'reload'` bypasses the HTTP cache so a genuine first fetch
+      // can't land stale bytes.
+      await Promise.all(
+        SHELL.map(async (url) => {
+          if (await cache.match(url)) return;
+          try {
+            const res = await fetch(new Request(url, { cache: 'reload' }));
+            if (res.ok) await cache.put(url, res);
+          } catch (e) {
+            /* offline first-run — the fetch handler will backfill later */
+          }
+        }),
+      );
+    }),
   );
-  // Activate immediately. The page decides when to reload — the worker taking
-  // over is not the disruptive part, the navigation is.
+  // Adopt the new worker's code right away. Safe precisely because install
+  // above can't change which app version is cached.
   self.skipWaiting();
 });
 
@@ -58,18 +74,13 @@ self.addEventListener('message', (event) => {
   if (!event.data) return;
   if (event.data.type === 'je-skip-waiting') self.skipWaiting();
 
-  // Self-heal: re-fetch the whole app shell straight from the network and
-  // overwrite what's cached, then tell the page it's safe to reload.
-  //
-  // This is the escape hatch for a deploy where index.html changed but sw.js
-  // did NOT. The browser sees an identical sw.js, so it installs no new
-  // worker and the install-time pre-cache never runs — leaving this worker
-  // happily serving a stale shell with no way out. Settings → Check for
-  // updates drives this path.
+  // The ONLY path that changes which build is cached. Re-fetches the whole
+  // shell from the network, overwrites it, then tells the page to reload onto
+  // it. Sent by Settings → Check for updates and by nothing else.
   if (event.data.type === 'je-refresh-shell') {
     event.waitUntil(
       (async () => {
-        const cache = await caches.open(VERSION);
+        const cache = await caches.open(CACHE);
         await Promise.all(
           SHELL.map((u) =>
             fetch(new Request(u, { cache: 'reload' }))
@@ -85,9 +96,12 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  // Only the retired per-deploy caches go. Deleting anything else — the
+  // stable cache above all — would force a re-download and auto-update the
+  // app behind the rep's back.
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))),
+      Promise.all(keys.filter((k) => LEGACY_CACHES.includes(k)).map((k) => caches.delete(k))),
     ),
   );
   self.clients.claim();
@@ -109,29 +123,26 @@ self.addEventListener('fetch', (event) => {
   // Version probe — always network, never cached, never written to the cache.
   // This is how the page asks "what's actually deployed right now?" without
   // depending on whether sw.js itself changed, so a deploy that forgets to
-  // bump VERSION is still detectable instead of invisible forever.
+  // touch sw.js is still detectable instead of invisible forever.
   if (url.searchParams.has('je-version-probe')) {
     event.respondWith(fetch(req).catch(() => Response.error()));
     return;
   }
 
-  // HTML navigations — cache-first, revalidate in background.
+  // HTML navigations — cache only. No background revalidate: re-fetching
+  // here would quietly stage a newer build for the next reload, which is the
+  // auto-update this worker exists to prevent. Network is the fallback for a
+  // cold first run, never a refresh path.
   if (req.mode === 'navigate') {
-    const networkUpdate = fetch(req).then(async (res) => {
-      if (res && res.ok) {
-        const cache = await caches.open(VERSION);
-        await cache.put('./index.html', res.clone());
-      }
-      return res;
-    });
-    event.waitUntil(networkUpdate.catch(() => {}));
     event.respondWith(
       (async () => {
-        const cache = await caches.open(VERSION);
+        const cache = await caches.open(CACHE);
         const cached = await cache.match('./index.html');
         if (cached) return cached;
         try {
-          return await networkUpdate;
+          const res = await fetch(req);
+          if (res && res.ok) await cache.put('./index.html', res.clone());
+          return res;
         } catch (e) {
           return Response.error();
         }
@@ -143,7 +154,7 @@ self.addEventListener('fetch', (event) => {
   // Same-origin assets — cache-first, then network.
   event.respondWith(
     (async () => {
-      const cache = await caches.open(VERSION);
+      const cache = await caches.open(CACHE);
       const cached = await cache.match(req);
       if (cached) return cached;
       try {
