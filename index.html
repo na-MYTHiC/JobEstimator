@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.7.1';
+      window.APP_VERSION = 'v1.8.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -301,14 +301,29 @@
       // Surfaces are tinted a few points toward each theme's hue rather than
       // being neutral grey — that's what makes a theme read as one piece
       // instead of an accent colour dropped onto a stock UI.
+      //
+      // Light-mode accents are deliberately deep. The header runs a gradient
+      // accent -> accent-deep -> accent-soft, and when accent-soft was a pale
+      // tint the right-hand end washed out: white title text and the settings
+      // cog sat on it at under 2:1. Keep each light-mode accent at 3:1 or
+      // better against --c-on-accent (white), and accent-soft too since the
+      // cog sits on it — that's the WCAG floor for large text and for UI
+      // components. --c-accent doubles as the price colour on white cards, so
+      // the same ratio covers both. accent-soft must stay lighter than
+      // accent, which must stay lighter than accent-deep, or the gradient
+      // stops reading as one sweep.
+      //
+      // DARK-mode accents are intentionally left bright: there --c-accent is
+      // text on a dark surface AND carries dark on-accent text, so darkening
+      // it would cut contrast from both sides.
       const THEMES = {
         tempest: {
           name: 'Tempest',
-          swatch: '#E69138',
+          swatch: '#BF6D18',
           light: {
-            '--c-accent': '230 145 56',
-            '--c-accent-soft': '246 178 107',
-            '--c-accent-deep': '201 118 33',
+            '--c-accent': '191 109 24',
+            '--c-accent-soft': '209 113 13',
+            '--c-accent-deep': '161 94 26',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 247',
             '--c-surface': '255 255 255',
@@ -340,11 +355,11 @@
         },
         ocean: {
           name: 'Ocean',
-          swatch: '#0EA5E9',
+          swatch: '#0C8AC2',
           light: {
-            '--c-accent': '14 165 233',
-            '--c-accent-soft': '125 211 252',
-            '--c-accent-deep': '2 132 199',
+            '--c-accent': '12 138 194',
+            '--c-accent-soft': '5 146 214',
+            '--c-accent-deep': '2 116 175',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 250 252',
             '--c-surface': '255 255 255',
@@ -376,11 +391,11 @@
         },
         forest: {
           name: 'Forest',
-          swatch: '#10B981',
+          swatch: '#0F9066',
           light: {
-            '--c-accent': '16 155 110',
-            '--c-accent-soft': '110 231 183',
-            '--c-accent-deep': '6 122 87',
+            '--c-accent': '15 144 102',
+            '--c-accent-soft': '26 157 105',
+            '--c-accent-deep': '6 113 81',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 251 248',
             '--c-surface': '255 255 255',
@@ -412,11 +427,11 @@
         },
         sunset: {
           name: 'Sunset',
-          swatch: '#F43F5E',
+          swatch: '#EA2548',
           light: {
-            '--c-accent': '236 56 88',
-            '--c-accent-soft': '253 164 175',
-            '--c-accent-deep': '204 30 62',
+            '--c-accent': '234 37 72',
+            '--c-accent-soft': '250 71 94',
+            '--c-accent-deep': '190 28 58',
             '--c-on-accent': '255 255 255',
             '--c-page': '253 249 250',
             '--c-surface': '255 255 255',
@@ -448,10 +463,10 @@
         },
         royal: {
           name: 'Royal',
-          swatch: '#7C3AED',
+          swatch: '#6F27EB',
           light: {
-            '--c-accent': '124 58 237',
-            '--c-accent-soft': '196 181 253',
+            '--c-accent': '111 39 235',
+            '--c-accent-soft': '134 104 251',
             '--c-accent-deep': '102 44 205',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 254',
@@ -484,7 +499,7 @@
         },
         monochrome: {
           name: 'Monochrome',
-          swatch: '#171717',
+          swatch: '#1F1F1F',
           light: {
             // The accent ramp is kept deliberately tight (#1F1F1F -> #0A0A0A ->
             // #333). The header is a gradient across all three, and a wide
