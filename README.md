@@ -15,11 +15,20 @@ multipliers, and a running job total.
   tier and shows the exact dollar savings.
 - **Cash / Finance toggle** — quote the same job on either terms; cash adds a
   Cash Savings line to the quote and lowers the total.
-- **Themes** — Tempest (brand orange), Ocean, Forest, Sunset, Royal, and
-  Monochrome, in both light and dark mode. Flat fills, no gradients, and
-  one colour per role: accent for the brand bar, prices and the primary
-  action; ink for structural headers; positive for savings; danger for
-  destructive actions.
+- **Themes** — Tempest (brand orange, the default) plus the eleven from
+  AniLog: Iris, Sakura, Midnight, Forest, Sunset, Ember, Solstice, Lavender,
+  Ocean, Crimson and Snow. Light and dark mode for each. Flat fills, no
+  gradients, and one colour per role: accent for the brand bar, prices and
+  the primary action; ink for structural headers; positive for savings;
+  danger for destructive actions.
+
+  Surfaces and text are shared across all themes and taken from AniLog's
+  `styles/base.css`, so only the accent changes between them — the same
+  structure AniLog uses. Accents are AniLog's own hexes verbatim in dark
+  mode; light mode darkens each one until it clears 3:1 on white, because
+  here the accent is a white-text bar *and* the price colour on a white
+  card. `--c-on-accent` flips between white and near-black per theme,
+  whichever reads better on that accent, which is AniLog's rule too.
 - **Density, sticky totals, and zoom** controls in the settings cog.
 - **Manual updates only** — the app never changes version on its own.
 
