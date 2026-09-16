@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.8.0';
+      window.APP_VERSION = 'v1.9.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -197,7 +197,7 @@
               danger: 'rgb(var(--c-danger) / <alpha-value>)',
               brand: {
                 orange: 'rgb(var(--c-accent) / <alpha-value>)',
-                orangeLight: 'rgb(var(--c-accent-soft) / <alpha-value>)',
+                orangeEdge: 'rgb(var(--c-accent-edge) / <alpha-value>)',
                 orangeAccent: 'rgb(var(--c-accent-deep) / <alpha-value>)',
                 navy: 'rgb(var(--c-ink) / <alpha-value>)',
                 navyDeep: 'rgb(var(--c-ink) / <alpha-value>)',
@@ -221,7 +221,7 @@
       :root {
         /* Tempest / light. JS overwrites the whole set on theme or mode change. */
         --c-accent: 230 145 56;
-        --c-accent-soft: 246 178 107;
+        --c-accent-edge: 246 178 107;
         --c-accent-deep: 201 118 33;
         --c-on-accent: 255 255 255;
         --c-page: 250 249 247;
@@ -302,28 +302,37 @@
       // being neutral grey — that's what makes a theme read as one piece
       // instead of an accent colour dropped onto a stock UI.
       //
-      // Light-mode accents are deliberately deep. The header runs a gradient
-      // accent -> accent-deep -> accent-soft, and when accent-soft was a pale
-      // tint the right-hand end washed out: white title text and the settings
-      // cog sat on it at under 2:1. Keep each light-mode accent at 3:1 or
-      // better against --c-on-accent (white), and accent-soft too since the
-      // cog sits on it — that's the WCAG floor for large text and for UI
-      // components. --c-accent doubles as the price colour on white cards, so
-      // the same ratio covers both. accent-soft must stay lighter than
-      // accent, which must stay lighter than accent-deep, or the gradient
-      // stops reading as one sweep.
+      // The header gradient runs --c-accent -> --c-accent-deep ->
+      // --c-accent-edge. Only --c-accent is shared with anything else: it is
+      // also the price colour and every ring/border tint. The other two exist
+      // purely for that sweep, which is why they can point in opposite
+      // directions per mode:
       //
-      // DARK-mode accents are intentionally left bright: there --c-accent is
-      // text on a dark surface AND carries dark on-accent text, so darkening
+      //   LIGHT — the sweep BRIGHTENS (edge is the lightest stop). Keep every
+      //     stop at 3:1 or better against --c-on-accent (white): the WCAG
+      //     floor for large text and UI components, since the title sits on
+      //     the first stop and the settings cog on the last. --c-accent
+      //     doubles as the price colour on white cards, so one ratio covers
+      //     both. edge was once a pale tint and the right-hand end washed
+      //     out at 1.8:1 — that's what the floor prevents.
+      //
+      //   DARK — the sweep DARKENS (edge is the darkest stop), so the header
+      //     recedes into a dark UI instead of glaring out of it. The floor
+      //     still applies but bites from the other side: dark mode puts DARK
+      //     on-accent text on the gradient, so the last stop can only go as
+      //     deep as that text stays readable.
+      //
+      // --c-accent itself is NEVER darkened for dark mode: there it is text
+      // on a dark surface and also carries dark on-accent text, so darkening
       // it would cut contrast from both sides.
       const THEMES = {
         tempest: {
           name: 'Tempest',
-          swatch: '#BF6D18',
+          swatch: '#D67A1B',
           light: {
-            '--c-accent': '191 109 24',
-            '--c-accent-soft': '209 113 13',
-            '--c-accent-deep': '161 94 26',
+            '--c-accent': '214 122 27',
+            '--c-accent-edge': '225 122 14',
+            '--c-accent-deep': '180 105 30',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 247',
             '--c-surface': '255 255 255',
@@ -338,8 +347,8 @@
           },
           dark: {
             '--c-accent': '235 155 70',
-            '--c-accent-soft': '246 189 130',
-            '--c-accent-deep': '214 130 45',
+            '--c-accent-edge': '165 94 18',
+            '--c-accent-deep': '220 125 24',
             '--c-on-accent': '28 20 10',
             '--c-page': '23 21 19',
             '--c-surface': '33 30 27',
@@ -355,11 +364,11 @@
         },
         ocean: {
           name: 'Ocean',
-          swatch: '#0C8AC2',
+          swatch: '#0D9ADA',
           light: {
-            '--c-accent': '12 138 194',
-            '--c-accent-soft': '5 146 214',
-            '--c-accent-deep': '2 116 175',
+            '--c-accent': '13 154 218',
+            '--c-accent-edge': '5 157 230',
+            '--c-accent-deep': '2 130 196',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 250 252',
             '--c-surface': '255 255 255',
@@ -374,8 +383,8 @@
           },
           dark: {
             '--c-accent': '56 189 248',
-            '--c-accent-soft': '125 211 252',
-            '--c-accent-deep': '14 165 233',
+            '--c-accent-edge': '6 124 176',
+            '--c-accent-deep': '8 165 235',
             '--c-on-accent': '6 24 38',
             '--c-page': '13 20 27',
             '--c-surface': '20 29 38',
@@ -391,11 +400,11 @@
         },
         forest: {
           name: 'Forest',
-          swatch: '#0F9066',
+          swatch: '#109B6E',
           light: {
-            '--c-accent': '15 144 102',
-            '--c-accent-soft': '26 157 105',
-            '--c-accent-deep': '6 113 81',
+            '--c-accent': '16 155 110',
+            '--c-accent-edge': '28 169 113',
+            '--c-accent-deep': '6 122 87',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 251 248',
             '--c-surface': '255 255 255',
@@ -410,8 +419,8 @@
           },
           dark: {
             '--c-accent': '52 211 153',
-            '--c-accent-soft': '110 231 183',
-            '--c-accent-deep': '16 185 129',
+            '--c-accent-edge': '28 130 93',
+            '--c-accent-deep': '37 173 124',
             '--c-on-accent': '5 30 22',
             '--c-page': '14 21 17',
             '--c-surface': '21 31 25',
@@ -427,11 +436,11 @@
         },
         sunset: {
           name: 'Sunset',
-          swatch: '#EA2548',
+          swatch: '#EC3858',
           light: {
-            '--c-accent': '234 37 72',
-            '--c-accent-soft': '250 71 94',
-            '--c-accent-deep': '190 28 58',
+            '--c-accent': '236 56 88',
+            '--c-accent-edge': '251 95 115',
+            '--c-accent-deep': '204 30 62',
             '--c-on-accent': '255 255 255',
             '--c-page': '253 249 250',
             '--c-surface': '255 255 255',
@@ -446,8 +455,8 @@
           },
           dark: {
             '--c-accent': '251 113 133',
-            '--c-accent-soft': '253 164 175',
-            '--c-accent-deep': '236 56 88',
+            '--c-accent-edge': '215 6 36',
+            '--c-accent-deep': '249 42 72',
             '--c-on-accent': '38 8 16',
             '--c-page': '25 18 20',
             '--c-surface': '35 25 28',
@@ -463,10 +472,10 @@
         },
         royal: {
           name: 'Royal',
-          swatch: '#6F27EB',
+          swatch: '#7C3AED',
           light: {
-            '--c-accent': '111 39 235',
-            '--c-accent-soft': '134 104 251',
+            '--c-accent': '124 58 237',
+            '--c-accent-edge': '155 130 252',
             '--c-accent-deep': '102 44 205',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 254',
@@ -482,8 +491,8 @@
           },
           dark: {
             '--c-accent': '167 139 250',
-            '--c-accent-soft': '196 181 253',
-            '--c-accent-deep': '139 92 246',
+            '--c-accent-edge': '116 73 247',
+            '--c-accent-deep': '139 102 248',
             '--c-on-accent': '24 16 45',
             '--c-page': '19 17 26',
             '--c-surface': '28 25 38',
@@ -506,7 +515,7 @@
             // ramp made it lurch from near-black to mid-grey, which read as a
             // rendering glitch rather than a design.
             '--c-accent': '31 31 31',
-            '--c-accent-soft': '51 51 51',
+            '--c-accent-edge': '51 51 51',
             '--c-accent-deep': '10 10 10',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 250 250',
@@ -525,8 +534,8 @@
             // page, so dark mode drives it to near-white and flips the text
             // that sits on top of it.
             '--c-accent': '235 235 235',
-            '--c-accent-soft': '186 186 186',
-            '--c-accent-deep': '255 255 255',
+            '--c-accent-edge': '141 141 141',
+            '--c-accent-deep': '188 188 188',
             '--c-on-accent': '15 15 15',
             '--c-page': '17 17 17',
             '--c-surface': '26 26 26',
@@ -1305,7 +1314,7 @@
         setPickerMode,
       }) {
         return (
-          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeLight text-onAccent">
+          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeEdge text-onAccent">
             <div className="px-3 sm:px-8 py-2 sm:py-3 flex flex-row items-center gap-3 sm:gap-6">
               <div className="leading-tight min-w-0 flex-shrink">
                 <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
@@ -1557,7 +1566,7 @@
                   <div
                     key={i}
                     className={
-                      'rounded-xl bg-gradient-to-r from-brand-orange/15 to-brand-orangeLight/20 dark:from-brand-orange/20 dark:to-brand-orangeLight/10 border border-brand-orange/40 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ' +
+                      'rounded-xl bg-gradient-to-r from-brand-orange/15 to-brand-orangeEdge/20 dark:from-brand-orange/20 dark:to-brand-orangeEdge/10 border border-brand-orange/40 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ' +
                       (compact ? 'px-3 py-2' : 'px-4 py-3')
                     }
                   >
@@ -2143,7 +2152,7 @@
 
               {/* ----------- RIGHT COLUMN — SIZE LIMITS ----------- */}
               <div className={colGap}>
-                <div className="px-3 py-2 rounded-lg bg-brand-navy/10 dark:bg-brand-navy/30 border border-brand-navy/30 text-brand-navy dark:text-brand-orangeLight font-extrabold text-xs uppercase tracking-[0.2em]">
+                <div className="px-3 py-2 rounded-lg bg-brand-navy/10 dark:bg-brand-navy/30 border border-brand-navy/30 text-brand-navy dark:text-brand-orange font-extrabold text-xs uppercase tracking-[0.2em]">
                   Size Limits
                 </div>
 
