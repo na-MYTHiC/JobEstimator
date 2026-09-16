@@ -14,7 +14,7 @@ multipliers, and a running job total.
 - **Volume-tier optimizer** — flags when you're a few units shy of the next
   tier and shows the exact dollar savings.
 - **Cash / Finance toggle** — quote the same job on either terms; cash adds a
-  Cash Deal Savings line and a Cash Price to the bottom of the quote.
+  Cash Savings line to the quote and lowers the total.
 - **Themes** — Tempest (brand orange), Ocean, Forest, Sunset, Royal, and
   Monochrome, in both light and dark mode.
 - **Density, sticky totals, and zoom** controls in the settings cog.
@@ -36,7 +36,7 @@ price list:
 
 ```
 Cash Price        = Financed Total x (1 - CASH_DISCOUNT_RATE)
-Cash Deal Savings = Financed Total - Cash Price
+Cash Savings      = Financed Total - Cash Price
 ```
 
 The quote shows **one total**, with every deduction listed above it:
@@ -44,7 +44,7 @@ The quote shows **one total**, with every deduction listed above it:
 ```
 Subtotal                 $56,355.75
   Volume Savings         -$4,174.50
-  Cash Deal Savings      -$3,320.62
+  Cash Savings           -$3,320.62
 Total                    $48,860.63
 ```
 
