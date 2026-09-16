@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.9.0';
+      window.APP_VERSION = 'v1.10.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -298,9 +298,17 @@
       // opacity modifiers (bg-brand-orange/15) still work through
       // rgb(var(--x) / <alpha-value>).
       //
-      // Surfaces are tinted a few points toward each theme's hue rather than
-      // being neutral grey — that's what makes a theme read as one piece
-      // instead of an accent colour dropped onto a stock UI.
+      // LIGHT-mode surfaces are tinted a few points toward each theme's hue
+      // rather than being neutral grey — at near-white that reads as warmth
+      // and makes a theme feel like one piece instead of an accent colour
+      // dropped onto a stock UI.
+      //
+      // DARK-mode surfaces are the opposite: strictly neutral, R=G=B on every
+      // step. The same trick that works at near-white turns muddy at
+      // near-black — Tempest's greys carried a +4 to +16 red-over-blue cast
+      // and the whole UI read brown rather than dark. Tint at these levels
+      // isn't read as warmth, just as a dirty grey, so the hue lives entirely
+      // in the accent and the greys stay out of its way. Keep them neutral.
       //
       // The header gradient runs --c-accent -> --c-accent-deep ->
       // --c-accent-edge. Only --c-accent is shared with anything else: it is
@@ -350,14 +358,14 @@
             '--c-accent-edge': '165 94 18',
             '--c-accent-deep': '220 125 24',
             '--c-on-accent': '28 20 10',
-            '--c-page': '23 21 19',
-            '--c-surface': '33 30 27',
-            '--c-surface-2': '43 39 35',
-            '--c-line': '58 52 47',
-            '--c-content': '245 243 240',
-            '--c-muted': '164 156 148',
-            '--c-ink': '15 13 12',
-            '--c-on-ink': '245 243 240',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '52 199 145',
             '--c-danger': '240 90 110',
           },
@@ -386,14 +394,14 @@
             '--c-accent-edge': '6 124 176',
             '--c-accent-deep': '8 165 235',
             '--c-on-accent': '6 24 38',
-            '--c-page': '13 20 27',
-            '--c-surface': '20 29 38',
-            '--c-surface-2': '28 40 51',
-            '--c-line': '42 57 71',
-            '--c-content': '236 244 250',
-            '--c-muted': '144 163 180',
-            '--c-ink': '7 14 21',
-            '--c-on-ink': '236 244 250',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '52 199 145',
             '--c-danger': '248 113 113',
           },
@@ -422,14 +430,14 @@
             '--c-accent-edge': '28 130 93',
             '--c-accent-deep': '37 173 124',
             '--c-on-accent': '5 30 22',
-            '--c-page': '14 21 17',
-            '--c-surface': '21 31 25',
-            '--c-surface-2': '29 42 34',
-            '--c-line': '44 62 51',
-            '--c-content': '237 248 241',
-            '--c-muted': '146 170 156',
-            '--c-ink': '6 34 25',
-            '--c-on-ink': '237 248 241',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '52 211 153',
             '--c-danger': '248 113 113',
           },
@@ -458,14 +466,14 @@
             '--c-accent-edge': '215 6 36',
             '--c-accent-deep': '249 42 72',
             '--c-on-accent': '38 8 16',
-            '--c-page': '25 18 20',
-            '--c-surface': '35 25 28',
-            '--c-surface-2': '46 33 38',
-            '--c-line': '63 46 52',
-            '--c-content': '252 241 244',
-            '--c-muted': '178 155 162',
-            '--c-ink': '48 10 22',
-            '--c-on-ink': '252 241 244',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '52 199 145',
             '--c-danger': '251 113 133',
           },
@@ -494,14 +502,14 @@
             '--c-accent-edge': '116 73 247',
             '--c-accent-deep': '139 102 248',
             '--c-on-accent': '24 16 45',
-            '--c-page': '19 17 26',
-            '--c-surface': '28 25 38',
-            '--c-surface-2': '37 33 50',
-            '--c-line': '54 48 72',
-            '--c-content': '242 240 252',
-            '--c-muted': '164 158 186',
-            '--c-ink': '26 20 56',
-            '--c-on-ink': '242 240 252',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '52 199 145',
             '--c-danger': '248 113 113',
           },
@@ -537,14 +545,14 @@
             '--c-accent-edge': '141 141 141',
             '--c-accent-deep': '188 188 188',
             '--c-on-accent': '15 15 15',
-            '--c-page': '17 17 17',
-            '--c-surface': '26 26 26',
-            '--c-surface-2': '36 36 36',
-            '--c-line': '54 54 54',
-            '--c-content': '245 245 245',
-            '--c-muted': '161 161 161',
-            '--c-ink': '8 8 8',
-            '--c-on-ink': '245 245 245',
+            '--c-page': '18 18 18',
+            '--c-surface': '28 28 28',
+            '--c-surface-2': '38 38 38',
+            '--c-line': '56 56 56',
+            '--c-content': '243 243 243',
+            '--c-muted': '160 160 160',
+            '--c-ink': '12 12 12',
+            '--c-on-ink': '243 243 243',
             '--c-positive': '190 190 190',
             '--c-danger': '220 110 110',
           },
