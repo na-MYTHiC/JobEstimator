@@ -35,15 +35,26 @@ financed price. Cash is a discount applied to the finished total, not a second
 price list:
 
 ```
-Cash Deal Savings = Total x CASH_DISCOUNT_RATE
-Cash Price        = Total - Cash Deal Savings
+Cash Price        = Total x (1 - CASH_DISCOUNT_RATE)
+Cash Deal Savings = Total - Cash Price
 ```
+
+The cash **price** is derived from the rate and the savings line is the
+remainder, not the other way round: the price is what the customer pays and
+what the office reconciles against the pricing sheet, so it's the figure that
+has to be right to the penny. Taking the savings as the remainder also means
+the three rows on screen always add up exactly as printed. The arithmetic runs
+in whole cents — at five-figure totals a fractional-dollar multiply is enough
+to round a half-cent the wrong way.
 
 `CASH_DISCOUNT_RATE` in `index.html` is the only place the rate lives, so it's
 the one line to edit if terms change — the KPI strip, the quote footer and the
-volume-tier hint all derive from it and can't drift apart. Both figures are
-rounded to whole cents against the already-rounded Total, so the three rows on
-screen always add up exactly as printed.
+volume-tier hint all derive from it and can't drift apart.
+
+**The rate is not "reverse the quoted price's markup."** Cash and finance share
+most of that markup and differ by a single factor, so the real discount is much
+smaller than undoing the whole thing. Re-derive it from the pricing sheet
+before changing it; guessing here under-quotes cash deals by a wide margin.
 
 The toggle sits in the Pricing Tool next to the totals rather than in Settings,
 since it gets flipped mid-appointment. It's saved with the job and **Reset**
