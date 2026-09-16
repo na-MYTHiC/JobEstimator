@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.6.0';
+      window.APP_VERSION = 'v1.7.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -1423,6 +1423,22 @@
         const netTerms = useMemo(() => cashTerms(jobNetTotal), [jobNetTotal]);
         const grandTerms = useMemo(() => cashTerms(grandTotal), [grandTotal]);
 
+        // The quote shows ONE total, with every deduction listed above it.
+        //
+        // Cash used to print a second total ("Total" then "Cash Price"), which
+        // read as two competing prices and invited the customer to ask which
+        // one was real. The cash discount is still taken off the financed
+        // total — netTerms does that — it just isn't shown as a line of its
+        // own; it lands in this list next to the volume saving instead.
+        const savingsLines = [];
+        if (volumeSavings > 0) {
+          savingsLines.push({ key: 'volume', label: 'Volume Savings', amount: volumeSavings });
+        }
+        if (isCash && netTerms.discount > 0) {
+          savingsLines.push({ key: 'cash', label: 'Cash Deal Savings', amount: netTerms.discount });
+        }
+        const displayNetTotal = isCash ? netTerms.total : netTerms.quoted;
+
         // Tier optimizer: find the closest upcoming break across all tier types in the job.
         // The label is generic ("units") — every primary line, doors included, counts toward totalUnits.
         const tierTip = useMemo(() => {
@@ -1507,7 +1523,7 @@
                     {fmt(isCash ? grandTerms.total : grandTotal)}
                   </div>
                   <div className="mt-0.5 text-[11px] font-semibold text-muted">
-                    {isCash ? 'Cash price — savings applied' : 'Financed terms'}
+                    {isCash ? 'Cash terms' : 'Financed terms'}
                   </div>
                 </Card>
                 <Card className={kpiCardPad}>
@@ -1758,11 +1774,6 @@
                     ]}
                   />
                 </div>
-                {isCash && netTerms.discount > 0 && (
-                  <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    Cash deal savings — {fmt(netTerms.discount)} off
-                  </div>
-                )}
               </div>
 
               {lines.length === 0 ? (
@@ -1831,35 +1842,43 @@
                       })}
                     </tbody>
                     <tfoot className="bg-surface2">
-                      <tr>
-                        <td
-                          colSpan="4"
-                          className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-muted"
-                        >
-                          Subtotal
-                        </td>
-                        <td className="px-4 py-2 text-right text-sm font-bold text-content tabular-nums">
-                          {fmt(jobGrossTotal)}
-                        </td>
-                        <td></td>
-                      </tr>
-                      {volumeSavings > 0 && (
+                      {/* Only worth a row when something comes off it — with no
+                          savings it would just restate the Total. */}
+                      {savingsLines.length > 0 && (
                         <tr>
                           <td
                             colSpan="4"
-                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400"
+                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-muted"
                           >
-                            Volume Savings
+                            Subtotal
                           </td>
-                          <td className="px-4 py-2 text-right text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                            −{fmt(volumeSavings)}
+                          <td className="px-4 py-2 text-right text-sm font-bold text-content tabular-nums">
+                            {fmt(jobGrossTotal)}
                           </td>
                           <td></td>
                         </tr>
                       )}
-                      {/* On a cash quote the Total steps down to a plain line and
-                          Cash Price becomes the headline — the customer should read
-                          the bottom row as the number they're paying. */}
+                      {/* Every deduction, in one tinted block, so the quote reads
+                          as a single list of savings rather than competing totals. */}
+                      {savingsLines.map((sv, i) => (
+                        <tr
+                          key={sv.key}
+                          className={
+                            'bg-emerald-500/10 ' + (i === 0 ? 'border-t border-line' : '')
+                          }
+                        >
+                          <td
+                            colSpan="4"
+                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400"
+                          >
+                            {sv.label}
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            −{fmt(sv.amount)}
+                          </td>
+                          <td></td>
+                        </tr>
+                      ))}
                       <tr className="border-t-2 border-line">
                         <td
                           colSpan="4"
@@ -1867,46 +1886,11 @@
                         >
                           Total
                         </td>
-                        <td
-                          className={
-                            'px-4 py-3 text-right tabular-nums ' +
-                            (isCash
-                              ? 'text-base font-bold text-content'
-                              : 'text-lg font-extrabold text-brand-orange')
-                          }
-                        >
-                          {fmt(netTerms.quoted)}
+                        <td className="px-4 py-3 text-right text-lg font-extrabold text-brand-orange tabular-nums">
+                          {fmt(displayNetTotal)}
                         </td>
                         <td></td>
                       </tr>
-                      {isCash && (
-                        <Fragment>
-                          <tr>
-                            <td
-                              colSpan="4"
-                              className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400"
-                            >
-                              Cash Deal Savings
-                            </td>
-                            <td className="px-4 py-2 text-right text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                              −{fmt(netTerms.discount)}
-                            </td>
-                            <td></td>
-                          </tr>
-                          <tr className="border-t-2 border-line">
-                            <td
-                              colSpan="4"
-                              className="px-4 py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-content"
-                            >
-                              Cash Price
-                            </td>
-                            <td className="px-4 py-3 text-right text-lg font-extrabold text-brand-orange tabular-nums">
-                              {fmt(netTerms.total)}
-                            </td>
-                            <td></td>
-                          </tr>
-                        </Fragment>
-                      )}
                     </tfoot>
                   </table>
                 </div>
