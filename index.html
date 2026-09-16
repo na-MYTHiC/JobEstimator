@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.5.0';
+      window.APP_VERSION = 'v1.5.1';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -1493,30 +1493,6 @@
               </div>
             </div>
 
-            {/* Payment terms. Lives here rather than in Settings because the rep
-                flips it in front of the customer, mid-quote, not once at setup. */}
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-muted font-semibold">
-                  Payment
-                </span>
-                <Toggle
-                  ariaLabel="Payment terms"
-                  value={payMode}
-                  onChange={setPayMode}
-                  options={[
-                    { value: 'finance', label: 'Finance' },
-                    { value: 'cash', label: 'Cash' },
-                  ]}
-                />
-              </div>
-              {isCash && netTerms.discount > 0 && (
-                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  Cash deal savings — {fmt(netTerms.discount)} off the total
-                </div>
-              )}
-            </div>
-
             {/* Tier optimizer hint — hidden when the rep disables it in settings */}
             {showTierHint && tierTip.length > 0 && (
               <div className="space-y-2">
@@ -1732,6 +1708,37 @@
                 <div className="font-bold tracking-tight">Job Line Items</div>
                 <Pill tone="onInk">{lines.length} line{lines.length === 1 ? '' : 's'}</Pill>
               </div>
+
+              {/* Payment terms. Sits with the line items, immediately above the
+                  total it changes, rather than up by the form — the rep flips
+                  it while reading the quote back to the customer. */}
+              <div
+                className={
+                  'flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line ' +
+                  d.sectionTight
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted font-semibold">
+                    Payment
+                  </span>
+                  <Toggle
+                    ariaLabel="Payment terms"
+                    value={payMode}
+                    onChange={setPayMode}
+                    options={[
+                      { value: 'finance', label: 'Finance' },
+                      { value: 'cash', label: 'Cash' },
+                    ]}
+                  />
+                </div>
+                {isCash && netTerms.discount > 0 && (
+                  <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    Cash deal savings — {fmt(netTerms.discount)} off
+                  </div>
+                )}
+              </div>
+
               {lines.length === 0 ? (
                 <div className="p-8 text-center text-muted text-sm">
                   No items added yet. Build your estimate above.
