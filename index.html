@@ -30,7 +30,7 @@
       // decides when to reload. Ignore the banner and the next cold start is
       // served from the new worker's cache regardless.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.4.0';
+      window.APP_VERSION = 'v1.4.1';
       window.__jeUpdatePending = false;
       window.jeShowUpdateBanner = function () {
         var el = document.getElementById('update-banner');
@@ -80,6 +80,59 @@
           return window.__jeSwReg.update();
         }
         return Promise.resolve();
+      };
+
+      // What version is actually deployed right now?
+      //
+      // reg.update() alone can't answer this: it only reacts to a byte change
+      // in sw.js, so a deploy that ships a new index.html without bumping the
+      // worker's VERSION is completely invisible to it — "Check for updates"
+      // would report "you're on the latest version" forever while the cache
+      // kept serving the old build. Reading the deployed APP_VERSION straight
+      // off the network is the ground truth, independent of all of that.
+      //
+      // The unique query param is what defeats the HTTP cache (and the
+      // service worker routes this param straight to the network). Resolves
+      // to null when offline or unparseable — the caller must treat that as
+      // "don't know", never as "up to date".
+      window.jeFetchDeployedVersion = function () {
+        var url = './index.html?je-version-probe=' + Date.now();
+        return fetch(url, { cache: 'no-store' })
+          .then(function (res) {
+            return res && res.ok ? res.text() : null;
+          })
+          .then(function (html) {
+            if (!html) return null;
+            var m = html.match(/APP_VERSION\s*=\s*'([^']+)'/);
+            return m ? m[1] : null;
+          })
+          .catch(function () {
+            return null;
+          });
+      };
+
+      // Have the active worker re-pull the shell from the network, then
+      // reload onto it. A bare location.reload() is not enough: the worker
+      // answers navigations cache-first, so a plain reload just re-serves the
+      // stale shell it already has.
+      window.jeForceRefresh = function () {
+        var sw = navigator.serviceWorker;
+        if (!sw || !sw.controller) {
+          location.reload();
+          return;
+        }
+        var reloaded = false;
+        function go() {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        }
+        sw.addEventListener('message', function (e) {
+          if (e.data && e.data.type === 'je-shell-refreshed') go();
+        });
+        sw.controller.postMessage({ type: 'je-refresh-shell' });
+        // Never hang on a worker that doesn't answer — reload anyway.
+        setTimeout(go, 5000);
       };
     </script>
     <script>
@@ -987,17 +1040,42 @@
       function UpdateRow() {
         const [status, setStatus] = useState('');
         const [busy, setBusy] = useState(false);
+        // Compare the running build against what's actually deployed, rather
+        // than inferring it from whether a new service worker turned up.
+        //
+        // The old version of this waited 1200ms and said "you're on the
+        // latest version" if no banner had appeared yet — which was a guess,
+        // and wrong twice over: it reported up-to-date when the worker was
+        // still installing on a slow connection, and it reported up-to-date
+        // when sw.js hadn't changed and so nothing would EVER appear. Asking
+        // the network for the deployed version answers the question directly.
         const check = async () => {
           setBusy(true);
           setStatus('Checking…');
           try {
-            await (window.jeCheckForUpdates ? window.jeCheckForUpdates() : Promise.resolve());
-            // If a new SW was found it will install + activate + fire
-            // controllerchange, which raises the banner. If not, tell the user.
-            setTimeout(() => {
-              if (!window.__jeUpdatePending) setStatus("You're on the latest version.");
+            const [deployed] = await Promise.all([
+              window.jeFetchDeployedVersion
+                ? window.jeFetchDeployedVersion()
+                : Promise.resolve(null),
+              // Still kick the normal worker update — if sw.js did change,
+              // this is the path that cleans up the old caches properly.
+              window.jeCheckForUpdates ? window.jeCheckForUpdates() : Promise.resolve(),
+            ]);
+            const running = window.APP_VERSION || 'v0';
+
+            if (deployed === null) {
+              // Couldn't reach the network. Say so — don't claim up to date.
+              setStatus('No connection — try again on Wi-Fi.');
               setBusy(false);
-            }, 1200);
+              return;
+            }
+            if (deployed !== running) {
+              setStatus(`Updating to ${deployed}…`);
+              window.jeForceRefresh();
+              return; // page is about to reload
+            }
+            setStatus(`You're on the latest version (${deployed}).`);
+            setBusy(false);
           } catch (e) {
             setStatus('Check failed — try again.');
             setBusy(false);

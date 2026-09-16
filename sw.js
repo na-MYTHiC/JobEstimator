@@ -12,8 +12,16 @@
 //
 // Version bumps: bump VERSION on every deploy so the activate step wipes the
 // old cache and forces the app shell to be re-fetched cleanly.
+//
+// Forgetting that bump used to strand every installed app permanently: the
+// browser saw an identical sw.js, installed nothing, and this worker kept
+// serving the old shell from cache with no way to notice. Settings → Check
+// for updates is now the safety net — it reads the deployed APP_VERSION off
+// the network (the 'je-version-probe' branch below) and, if it differs from
+// what's running, drives 'je-refresh-shell' to re-pull the shell. Bumping
+// VERSION is still the right thing to do; it just isn't load-bearing.
 
-const VERSION = 'je-v5';
+const VERSION = 'je-v6';
 const SHELL = [
   './',
   './index.html',
@@ -47,7 +55,33 @@ self.addEventListener('install', (event) => {
 // Defensive escape hatch: if a worker somehow ends up waiting, the page can
 // release it via postMessage rather than being stuck across sessions.
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'je-skip-waiting') self.skipWaiting();
+  if (!event.data) return;
+  if (event.data.type === 'je-skip-waiting') self.skipWaiting();
+
+  // Self-heal: re-fetch the whole app shell straight from the network and
+  // overwrite what's cached, then tell the page it's safe to reload.
+  //
+  // This is the escape hatch for a deploy where index.html changed but sw.js
+  // did NOT. The browser sees an identical sw.js, so it installs no new
+  // worker and the install-time pre-cache never runs — leaving this worker
+  // happily serving a stale shell with no way out. Settings → Check for
+  // updates drives this path.
+  if (event.data.type === 'je-refresh-shell') {
+    event.waitUntil(
+      (async () => {
+        const cache = await caches.open(VERSION);
+        await Promise.all(
+          SHELL.map((u) =>
+            fetch(new Request(u, { cache: 'reload' }))
+              .then((res) => (res.ok ? cache.put(u, res) : null))
+              .catch(() => null),
+          ),
+        );
+        const clients = await self.clients.matchAll({ includeUncontrolled: true });
+        clients.forEach((c) => c.postMessage({ type: 'je-shell-refreshed' }));
+      })(),
+    );
+  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -71,6 +105,15 @@ self.addEventListener('fetch', (event) => {
   }
   // Cross-origin (CDN scripts, fonts, etc.) — let the browser handle it.
   if (url.origin !== self.location.origin) return;
+
+  // Version probe — always network, never cached, never written to the cache.
+  // This is how the page asks "what's actually deployed right now?" without
+  // depending on whether sw.js itself changed, so a deploy that forgets to
+  // bump VERSION is still detectable instead of invisible forever.
+  if (url.searchParams.has('je-version-probe')) {
+    event.respondWith(fetch(req).catch(() => Response.error()));
+    return;
+  }
 
   // HTML navigations — cache-first, revalidate in background.
   if (req.mode === 'navigate') {
