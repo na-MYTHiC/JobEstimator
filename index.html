@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.7.0';
+      window.APP_VERSION = 'v1.7.1';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -1435,7 +1435,7 @@
           savingsLines.push({ key: 'volume', label: 'Volume Savings', amount: volumeSavings });
         }
         if (isCash && netTerms.discount > 0) {
-          savingsLines.push({ key: 'cash', label: 'Cash Deal Savings', amount: netTerms.discount });
+          savingsLines.push({ key: 'cash', label: 'Cash Savings', amount: netTerms.discount });
         }
         const displayNetTotal = isCash ? netTerms.total : netTerms.quoted;
 
