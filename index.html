@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.5.1';
+      window.APP_VERSION = 'v1.6.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -709,25 +709,40 @@
       // earns a discount off that price, and the rate below is the single
       // place it lives: there is no second price list, no markup table, and
       // nothing upstream of the quote in the app. A cash quote is the same
-      // quote with one discount line on it.
+      // quote with one savings line on it.
       //
       // Every cash figure on screen — the KPI total, the quote footer, the
       // volume-tier hint — is derived from this one constant, so the numbers
       // can't drift apart when the rate changes. Change it here only.
+      //
+      // The rate comes off the pricing sheet. It is NOT "undo the quoted
+      // price's markup": cash and finance share most of that markup and
+      // differ by one factor, so the discount is a good deal smaller than
+      // reversing the whole thing. Getting that wrong under-quotes cash
+      // deals badly, so re-derive it from the sheet before touching it.
       // --------------------------------------------------------------------
-      const CASH_DISCOUNT_RATE = 0.1735537190082645;
+      const CASH_DISCOUNT_RATE = 0.06363636363636364;
 
       const round2 = (n) => Math.round((n || 0) * 100) / 100;
 
-      // Cash terms for a quoted total: what the discount line reads, and what
-      // the customer actually pays. Both are rounded to whole cents against
-      // the already-rounded quoted total, so the three rows on the quote
-      // (total, savings, cash price) add up exactly as printed — no penny
-      // that only exists in floating point.
+      // Cash terms for a quoted total: what the customer pays, and what the
+      // savings line reads.
+      //
+      // The cash PRICE is derived from the rate, and the savings line is then
+      // the remainder — not the other way round. The price is the number the
+      // customer pays and the office reconciles against the sheet, so it's
+      // the one that has to be right to the penny; the savings line is
+      // presentational. Taking the remainder also keeps the three printed
+      // rows (total, savings, cash price) adding up exactly, with no penny
+      // that exists only in floating point.
+      //
+      // Whole cents throughout: at five-figure totals a fractional-dollar
+      // multiply is enough to round a half-cent the wrong way.
       function cashTerms(quotedTotal) {
         const quoted = round2(quotedTotal);
-        const discount = round2(quoted * CASH_DISCOUNT_RATE);
-        return { quoted, discount, total: round2(quoted - discount) };
+        const cents = Math.round(quoted * 100);
+        const total = Math.round(cents * (1 - CASH_DISCOUNT_RATE)) / 100;
+        return { quoted, discount: round2(quoted - total), total };
       }
 
       const fmt = (n) =>
