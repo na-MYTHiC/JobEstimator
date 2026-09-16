@@ -15,20 +15,29 @@ multipliers, and a running job total.
   tier and shows the exact dollar savings.
 - **Cash / Finance toggle** — quote the same job on either terms; cash adds a
   Cash Savings line to the quote and lowers the total.
-- **Themes** — Tempest (brand orange, the default) plus the eleven from
-  AniLog: Iris, Sakura, Midnight, Forest, Sunset, Ember, Solstice, Lavender,
-  Ocean, Crimson and Snow. Light and dark mode for each. Flat fills, no
-  gradients, and one colour per role: accent for the brand bar, prices and
-  the primary action; ink for structural headers; positive for savings;
-  danger for destructive actions.
+- **Themes** — eleven, matching AniLog: Tempest (the default), Iris, Sakura,
+  Midnight, Forest, Ember, Solstice, Lavender, Ocean, Crimson and Snow.
+  Tempest is AniLog's Sunset orange, so there is no separate Sunset entry.
+  Flat fills, no gradients, and one colour per role: accent for the brand
+  bar, prices and the primary action; ink for structural headers; positive
+  for savings; danger for destructive actions.
+- **Three modes** — Light, Dark and AMOLED (true black, for OLED screens),
+  also matching AniLog. AMOLED carries the `dark` class alongside Dark, since
+  a few `dark:` utilities in the markup depend on it.
 
   Surfaces and text are shared across all themes and taken from AniLog's
   `styles/base.css`, so only the accent changes between them — the same
-  structure AniLog uses. Accents are AniLog's own hexes verbatim in dark
-  mode; light mode darkens each one until it clears 3:1 on white, because
-  here the accent is a white-text bar *and* the price colour on a white
-  card. `--c-on-accent` flips between white and near-black per theme,
-  whichever reads better on that accent, which is AniLog's rule too.
+  structure AniLog uses. Accents are AniLog's own hexes verbatim in the two
+  dark modes; light mode darkens each one until it clears 3:1 on white,
+  because here the accent is a white-text bar *and* the price colour on a
+  white card. `--c-on-accent` flips between white and near-black per theme
+  and mode, whichever reads better on that accent, which is AniLog's rule
+  too.
+
+  AMOLED needed two values AniLog has no equivalent for: it has no dark
+  header bar and its borders are an rgba wash. `--c-ink` goes *lighter* than
+  the surface there — darker would mean pure black, which is the page, and
+  the header bars would vanish.
 - **Density, sticky totals, and zoom** controls in the settings cog.
 - **Manual updates only** — the app never changes version on its own.
 
