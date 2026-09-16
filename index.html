@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.10.0';
+      window.APP_VERSION = 'v1.11.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -195,15 +195,13 @@
               onAccent: 'rgb(var(--c-on-accent) / <alpha-value>)',
               positive: 'rgb(var(--c-positive) / <alpha-value>)',
               danger: 'rgb(var(--c-danger) / <alpha-value>)',
+              // One name per colour. navy/navyDeep/section all aliased --c-ink,
+              // greyBg aliased --c-page and red aliased --c-danger, so the same
+              // colour could be spelled four ways; orangeEdge/orangeAccent were
+              // the gradient's other two stops and have no consumer now that the
+              // gradient is gone. Use ink / page / danger / accent directly.
               brand: {
                 orange: 'rgb(var(--c-accent) / <alpha-value>)',
-                orangeEdge: 'rgb(var(--c-accent-edge) / <alpha-value>)',
-                orangeAccent: 'rgb(var(--c-accent-deep) / <alpha-value>)',
-                navy: 'rgb(var(--c-ink) / <alpha-value>)',
-                navyDeep: 'rgb(var(--c-ink) / <alpha-value>)',
-                section: 'rgb(var(--c-ink) / <alpha-value>)',
-                greyBg: 'rgb(var(--c-page) / <alpha-value>)',
-                red: 'rgb(var(--c-danger) / <alpha-value>)',
               },
             },
             fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
@@ -310,37 +308,31 @@
       // isn't read as warmth, just as a dirty grey, so the hue lives entirely
       // in the accent and the greys stay out of its way. Keep them neutral.
       //
-      // The header gradient runs --c-accent -> --c-accent-deep ->
-      // --c-accent-edge. Only --c-accent is shared with anything else: it is
-      // also the price colour and every ring/border tint. The other two exist
-      // purely for that sweep, which is why they can point in opposite
-      // directions per mode:
+      // The header is a flat --c-accent bar; there is no gradient, and no
+      // accent-deep/accent-edge stops to keep in step with it any more.
       //
-      //   LIGHT — the sweep BRIGHTENS (edge is the lightest stop). Keep every
-      //     stop at 3:1 or better against --c-on-accent (white): the WCAG
-      //     floor for large text and UI components, since the title sits on
-      //     the first stop and the settings cog on the last. --c-accent
-      //     doubles as the price colour on white cards, so one ratio covers
-      //     both. edge was once a pale tint and the right-hand end washed
-      //     out at 1.8:1 — that's what the floor prevents.
+      // Each colour has one job, so a change lands in one place:
+      //   --c-accent   brand bar, prices, the primary button, focus rings
+      //   --c-ink      structural headers (card and table heads)
+      //   --c-positive savings lines
+      //   --c-danger   destructive actions
       //
-      //   DARK — the sweep DARKENS (edge is the darkest stop), so the header
-      //     recedes into a dark UI instead of glaring out of it. The floor
-      //     still applies but bites from the other side: dark mode puts DARK
-      //     on-accent text on the gradient, so the last stop can only go as
-      //     deep as that text stays readable.
+      // --c-accent must clear 3:1 against --c-on-accent (WCAG's floor for
+      // large text and UI components — the title and the settings cog sit on
+      // it) AND against --c-surface, since it doubles as the price colour on
+      // cards. In light mode --c-on-accent is white and so is the surface, so
+      // one ratio covers both. --c-positive clears 4.5:1 on --c-surface: it
+      // labels the savings rows as body text, not just a swatch.
       //
-      // --c-accent itself is NEVER darkened for dark mode: there it is text
-      // on a dark surface and also carries dark on-accent text, so darkening
-      // it would cut contrast from both sides.
+      // --c-accent is NEVER darkened for dark mode: there it is text on a dark
+      // surface and also carries dark on-accent text, so darkening it would
+      // cut contrast from both sides.
       const THEMES = {
         tempest: {
           name: 'Tempest',
           swatch: '#D67A1B',
           light: {
             '--c-accent': '214 122 27',
-            '--c-accent-edge': '225 122 14',
-            '--c-accent-deep': '180 105 30',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 247',
             '--c-surface': '255 255 255',
@@ -350,13 +342,11 @@
             '--c-muted': '122 114 108',
             '--c-ink': '41 37 35',
             '--c-on-ink': '255 255 255',
-            '--c-positive': '5 150 105',
+            '--c-positive': '5 135 95',
             '--c-danger': '200 16 46',
           },
           dark: {
             '--c-accent': '235 155 70',
-            '--c-accent-edge': '165 94 18',
-            '--c-accent-deep': '220 125 24',
             '--c-on-accent': '28 20 10',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -375,8 +365,6 @@
           swatch: '#0D9ADA',
           light: {
             '--c-accent': '13 154 218',
-            '--c-accent-edge': '5 157 230',
-            '--c-accent-deep': '2 130 196',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 250 252',
             '--c-surface': '255 255 255',
@@ -386,13 +374,11 @@
             '--c-muted': '100 118 134',
             '--c-ink': '12 46 71',
             '--c-on-ink': '255 255 255',
-            '--c-positive': '5 150 105',
+            '--c-positive': '5 135 95',
             '--c-danger': '220 38 38',
           },
           dark: {
             '--c-accent': '56 189 248',
-            '--c-accent-edge': '6 124 176',
-            '--c-accent-deep': '8 165 235',
             '--c-on-accent': '6 24 38',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -411,8 +397,6 @@
           swatch: '#109B6E',
           light: {
             '--c-accent': '16 155 110',
-            '--c-accent-edge': '28 169 113',
-            '--c-accent-deep': '6 122 87',
             '--c-on-accent': '255 255 255',
             '--c-page': '247 251 248',
             '--c-surface': '255 255 255',
@@ -422,13 +406,11 @@
             '--c-muted': '100 122 110',
             '--c-ink': '6 66 48',
             '--c-on-ink': '255 255 255',
-            '--c-positive': '5 150 105',
+            '--c-positive': '5 135 95',
             '--c-danger': '200 40 50',
           },
           dark: {
             '--c-accent': '52 211 153',
-            '--c-accent-edge': '28 130 93',
-            '--c-accent-deep': '37 173 124',
             '--c-on-accent': '5 30 22',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -447,8 +429,6 @@
           swatch: '#EC3858',
           light: {
             '--c-accent': '236 56 88',
-            '--c-accent-edge': '251 95 115',
-            '--c-accent-deep': '204 30 62',
             '--c-on-accent': '255 255 255',
             '--c-page': '253 249 250',
             '--c-surface': '255 255 255',
@@ -458,13 +438,11 @@
             '--c-muted': '128 106 113',
             '--c-ink': '76 12 30',
             '--c-on-ink': '255 255 255',
-            '--c-positive': '5 150 105',
+            '--c-positive': '5 135 95',
             '--c-danger': '200 16 46',
           },
           dark: {
             '--c-accent': '251 113 133',
-            '--c-accent-edge': '215 6 36',
-            '--c-accent-deep': '249 42 72',
             '--c-on-accent': '38 8 16',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -483,8 +461,6 @@
           swatch: '#7C3AED',
           light: {
             '--c-accent': '124 58 237',
-            '--c-accent-edge': '155 130 252',
-            '--c-accent-deep': '102 44 205',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 249 254',
             '--c-surface': '255 255 255',
@@ -494,13 +470,11 @@
             '--c-muted': '113 106 133',
             '--c-ink': '45 34 96',
             '--c-on-ink': '255 255 255',
-            '--c-positive': '5 150 105',
+            '--c-positive': '5 135 95',
             '--c-danger': '200 30 60',
           },
           dark: {
             '--c-accent': '167 139 250',
-            '--c-accent-edge': '116 73 247',
-            '--c-accent-deep': '139 102 248',
             '--c-on-accent': '24 16 45',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -523,8 +497,6 @@
             // ramp made it lurch from near-black to mid-grey, which read as a
             // rendering glitch rather than a design.
             '--c-accent': '31 31 31',
-            '--c-accent-edge': '51 51 51',
-            '--c-accent-deep': '10 10 10',
             '--c-on-accent': '255 255 255',
             '--c-page': '250 250 250',
             '--c-surface': '255 255 255',
@@ -542,8 +514,6 @@
             // page, so dark mode drives it to near-white and flips the text
             // that sits on top of it.
             '--c-accent': '235 235 235',
-            '--c-accent-edge': '141 141 141',
-            '--c-accent-deep': '188 188 188',
             '--c-on-accent': '15 15 15',
             '--c-page': '18 18 18',
             '--c-surface': '28 28 28',
@@ -870,11 +840,15 @@
         );
       }
 
-      function Pill({ children, tone = 'orange' }) {
+      function Pill({ children, tone = 'accent' }) {
+        // 'orange' and 'navy' used to be byte-identical, so two of the three
+        // colour-multiplier chips rendered the same. They're now one accent at
+        // two strengths, which also lets the chips read as a progression:
+        // no upcharge -> some -> most.
         const tones = {
-          orange: 'bg-brand-orange/12 text-brand-orange ring-1 ring-brand-orange/30',
-          grey: 'bg-surface2 text-content ring-1 ring-line',
-          navy: 'bg-brand-orange/12 text-brand-orange ring-1 ring-brand-orange/30',
+          neutral: 'bg-surface2 text-content ring-1 ring-line',
+          accent: 'bg-brand-orange/12 text-brand-orange ring-1 ring-brand-orange/30',
+          accentStrong: 'bg-brand-orange/25 text-brand-orange ring-1 ring-brand-orange/50',
           // For pills sitting ON the dark ink bar. Derived from the ink
           // foreground rather than the accent, because on Monochrome the
           // accent IS near-black and vanished against that bar.
@@ -1322,7 +1296,7 @@
         setPickerMode,
       }) {
         return (
-          <header className="app-header bg-gradient-to-r from-brand-orange via-brand-orangeAccent to-brand-orangeEdge text-onAccent">
+          <header className="app-header bg-brand-orange text-onAccent">
             <div className="px-3 sm:px-8 py-2 sm:py-3 flex flex-row items-center gap-3 sm:gap-6">
               <div className="leading-tight min-w-0 flex-shrink">
                 <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
@@ -1574,7 +1548,7 @@
                   <div
                     key={i}
                     className={
-                      'rounded-xl bg-gradient-to-r from-brand-orange/15 to-brand-orangeEdge/20 dark:from-brand-orange/20 dark:to-brand-orangeEdge/10 border border-brand-orange/40 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ' +
+                      'rounded-xl bg-brand-orange/10 border border-brand-orange/30 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ' +
                       (compact ? 'px-3 py-2' : 'px-4 py-3')
                     }
                   >
@@ -1593,7 +1567,7 @@
 
             {/* Estimator form */}
             <Card className="overflow-hidden">
-              <div className={'bg-brand-orange text-onAccent flex items-center justify-between gap-3 ' + d.sectionTight}>
+              <div className={'bg-ink text-onInk flex items-center justify-between gap-3 ' + d.sectionTight}>
                 <div className="font-bold tracking-tight">Add an Item</div>
                 <button
                   onClick={resetAll}
@@ -1766,7 +1740,7 @@
                       <button
                         onClick={addLine}
                         disabled={!form.itemId || !qtyNum}
-                        className="rounded-xl bg-ink hover:brightness-125 text-onInk px-4 py-2.5 text-sm font-bold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="rounded-xl bg-brand-orange hover:brightness-110 text-onAccent px-4 py-2.5 text-sm font-bold shadow-sm disabled:bg-surface2 disabled:text-muted disabled:shadow-none disabled:cursor-not-allowed transition-colors"
                       >
                         + Add to Job
                       </button>
@@ -1863,7 +1837,7 @@
                             <td className={td + ' text-right'}>
                               <button
                                 onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}
-                                className="text-muted hover:text-brand-red font-bold text-lg leading-none"
+                                className="text-muted hover:text-danger font-bold text-lg leading-none"
                                 aria-label="Remove line"
                               >
                                 ×
@@ -1896,16 +1870,16 @@
                         <tr
                           key={sv.key}
                           className={
-                            'bg-emerald-500/10 ' + (i === 0 ? 'border-t border-line' : '')
+                            'bg-positive/10 ' + (i === 0 ? 'border-t border-line' : '')
                           }
                         >
                           <td
                             colSpan="4"
-                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400"
+                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-positive"
                           >
                             {sv.label}
                           </td>
-                          <td className="px-4 py-2 text-right text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                          <td className="px-4 py-2 text-right text-sm font-extrabold text-positive tabular-nums">
                             −{fmt(sv.amount)}
                           </td>
                           <td></td>
@@ -1990,19 +1964,19 @@
         },
       ];
 
-      function CatalogTable({ title, headers, rows, tone = 'orange', muted = false, density = 'comfortable', note }) {
+      function CatalogTable({ title, headers, rows, tone = 'accent', muted = false, density = 'comfortable', note }) {
         const compact = density === 'compact';
         // Foreground is paired with each background rather than hardcoded to
         // white: on Monochrome dark the accent is near-white and the ink is
         // near-black, so a single fixed text colour is unreadable on one of
         // them no matter which you pick.
+        // Was four entries for two styles: 'navy' and 'grey' were identical
+        // and 'muted' was never passed.
         const headStyles = {
-          orange: 'bg-brand-orange text-onAccent',
-          navy: 'bg-ink text-onInk',
-          grey: 'bg-ink text-onInk',
-          muted: 'bg-muted text-surface',
+          accent: 'bg-brand-orange text-onAccent',
+          ink: 'bg-ink text-onInk',
         };
-        const headClass = headStyles[tone] || headStyles.orange;
+        const headClass = headStyles[tone] || headStyles.accent;
         const headerPad = compact ? 'px-4 py-1.5' : 'px-5 py-2.5';
         const thPad = compact ? 'px-3 py-1' : 'px-3 py-2';
         const tdPad = compact ? 'px-3 py-1' : 'px-3 py-2';
@@ -2084,9 +2058,9 @@
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Pill tone="orange">White / Beige ×1.00</Pill>
-                  <Pill tone="navy">Desert Clay ×1.10</Pill>
-                  <Pill tone="grey">Black / Bronze ×1.25</Pill>
+                  <Pill tone="neutral">White / Beige ×1.00</Pill>
+                  <Pill tone="accent">Desert Clay ×1.10</Pill>
+                  <Pill tone="accentStrong">Black / Bronze ×1.25</Pill>
                 </div>
               </div>
             </Card>
@@ -2137,7 +2111,7 @@
                   title="PATIO DOORS"
                   headers={['Size', 'Price']}
                   rows={PATIO.map((w) => [w.label, fmt(w.price)])}
-                  tone="navy"
+                  tone="ink"
                   density={density}
                 />
 
@@ -2145,7 +2119,7 @@
                   title="IMPACT PATIO DOORS"
                   headers={['Size', 'Price']}
                   rows={IMPACT_PATIO.map((w) => [w.label, fmt(w.price)])}
-                  tone="navy"
+                  tone="ink"
                   density={density}
                 />
 
@@ -2153,14 +2127,14 @@
                   title="ADDITIONAL OPTIONS"
                   headers={['Option', 'Price (each)']}
                   rows={OPTIONS.map((w) => [w.label, fmt(w.price)])}
-                  tone="grey"
+                  tone="ink"
                   density={density}
                 />
               </div>
 
               {/* ----------- RIGHT COLUMN — SIZE LIMITS ----------- */}
               <div className={colGap}>
-                <div className="px-3 py-2 rounded-lg bg-brand-navy/10 dark:bg-brand-navy/30 border border-brand-navy/30 text-brand-navy dark:text-brand-orange font-extrabold text-xs uppercase tracking-[0.2em]">
+                <div className="px-3 py-2 rounded-lg bg-ink/10 dark:bg-ink/30 border border-ink/30 text-ink dark:text-brand-orange font-extrabold text-xs uppercase tracking-[0.2em]">
                   Size Limits
                 </div>
 
