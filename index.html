@@ -34,7 +34,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.13.0';
+      window.APP_VERSION = 'v1.14.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -283,7 +283,7 @@
       }
     </style>
   </head>
-  <body class="bg-page bg-page transition-colors duration-200">
+  <body class="bg-page transition-colors duration-200">
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react">
@@ -1101,14 +1101,55 @@
         return [value, setValue];
       }
 
+      // --------------------------------------------------------------------
+      // Viewport width as state, rather than only as a CSS breakpoint.
+      //
+      // The line-items table drops its Family and Color columns on a phone,
+      // and a footer's colSpan has to match the number of columns actually
+      // rendered. That's a number, which no `sm:` class can express — so the
+      // breakpoint is read here and the columns and the spans come off the
+      // same boolean and can't disagree.
+      // --------------------------------------------------------------------
+      function useIsWide(query = '(min-width: 640px)') {
+        const [wide, setWide] = useState(() => {
+          try {
+            return window.matchMedia(query).matches;
+          } catch (e) {
+            return true; // assume desktop rather than collapsing columns
+          }
+        });
+        useEffect(() => {
+          let mq;
+          try {
+            mq = window.matchMedia(query);
+          } catch (e) {
+            return;
+          }
+          const onChange = (e) => setWide(e.matches);
+          setWide(mq.matches);
+          // addEventListener on a MediaQueryList is missing on older iOS
+          // Safari, where addListener is still the working path.
+          if (mq.addEventListener) mq.addEventListener('change', onChange);
+          else mq.addListener(onChange);
+          return () => {
+            if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+            else mq.removeListener(onChange);
+          };
+        }, [query]);
+        return wide;
+      }
+
       // Reusable UI primitives
       // --------------------------------------------------------------------
-      function Toggle({ value, options, onChange, ariaLabel }) {
+      function Toggle({ value, options, onChange, ariaLabel, full = false }) {
         return (
           <div
             role="tablist"
             aria-label={ariaLabel}
-            className="inline-flex rounded-full bg-surface2 p-1 text-xs font-semibold"
+            className={
+              (full ? 'flex w-full ' : 'inline-flex ') +
+              'rounded-full bg-surface2 p-1 text-xs font-semibold'
+            }
           >
             {options.map((opt) => {
               const active = value === opt.value;
@@ -1119,7 +1160,8 @@
                   aria-selected={active}
                   onClick={() => onChange(opt.value)}
                   className={
-                    'px-3 py-1.5 rounded-full transition-all whitespace-nowrap ' +
+                    (full ? 'flex-1 ' : '') +
+                    'px-2.5 sm:px-3 py-1.5 rounded-full transition-all whitespace-nowrap ' +
                     (active
                       ? 'bg-surface text-brand-orange shadow-sm'
                       : 'text-muted hover:text-content')
@@ -1175,7 +1217,7 @@
           <div className="inline-flex items-center rounded-full bg-surface2 p-1 text-xs font-semibold">
             <button
               onClick={onZoomOut}
-              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors"
+              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-surface hover:text-brand-orange transition-colors"
               aria-label="Zoom out"
               title="Zoom out"
             >
@@ -1196,7 +1238,7 @@
             </button>
             <button
               onClick={onZoomReset}
-              className="px-2 h-7 rounded-full text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors tabular-nums min-w-[3.25rem]"
+              className="px-2 h-7 rounded-full text-content hover:bg-surface hover:text-brand-orange transition-colors tabular-nums min-w-[3.25rem]"
               aria-label="Reset zoom"
               title="Reset zoom"
             >
@@ -1204,7 +1246,7 @@
             </button>
             <button
               onClick={onZoomIn}
-              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-white hover:bg-surface hover:text-brand-orange transition-colors"
+              className="w-8 h-7 rounded-full flex items-center justify-center text-content hover:bg-surface hover:text-brand-orange transition-colors"
               aria-label="Zoom in"
               title="Zoom in"
             >
@@ -1371,21 +1413,21 @@
             <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-muted mb-1.5">
               About
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm">
-                <div className="font-semibold text-content">Job Estimator</div>
-                <div className="text-xs text-muted">
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="font-semibold text-content">Job Estimator</span>
+                <span className="text-xs text-muted tabular-nums">
                   {window.APP_VERSION || 'v0'}
-                  {status ? ` • ${status}` : ''}
-                </div>
+                </span>
               </div>
               <button
                 onClick={check}
                 disabled={busy}
-                className="rounded-lg bg-surface2 hover:bg-line text-content text-xs font-semibold px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full rounded-lg bg-surface2 hover:bg-line text-content text-xs font-semibold px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Check for updates
               </button>
+              {status && <div className="text-xs text-muted">{status}</div>}
             </div>
           </div>
         );
@@ -1460,7 +1502,7 @@
               className={
                 'w-9 h-9 rounded-full flex items-center justify-center transition-all ring-1 ' +
                 (open
-                  ? 'bg-white text-brand-orange ring-white shadow-sm'
+                  ? 'bg-onAccent text-brand-orange ring-onAccent shadow-sm'
                   : 'bg-onAccent/15 text-onAccent ring-onAccent/30 hover:bg-onAccent/25')
               }
               aria-label="Settings"
@@ -1604,28 +1646,35 @@
       }) {
         return (
           <header className="app-header bg-brand-orange text-onAccent">
-            <div className="px-3 sm:px-8 py-2 sm:py-3 flex flex-row items-center gap-3 sm:gap-6">
-              <div className="leading-tight min-w-0 flex-shrink">
-                <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
-                  Tempest Windows
-                </h1>
-                <div className="text-[11px] sm:text-xs md:text-sm font-medium text-onAccent/85 mt-0.5 truncate">
-                  Job Estimator
+            {/* Brand + view toggle + cog do not fit one line on a phone: the
+                name alone wants ~157px and 375px and 360px devices leave it
+                ~129-144. Rather than shaving the brand down to fit, the
+                toggle drops to its own full-width row below sm, where it
+                also gets a much better tap target. */}
+            <div className="px-3 sm:px-8 py-2 sm:py-3">
+              <div className="flex flex-row items-center gap-3 sm:gap-6">
+                <div className="leading-tight min-w-0 flex-1">
+                  <h1 className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight truncate">
+                    Tempest Windows
+                  </h1>
+                  <div className="text-[11px] sm:text-xs md:text-sm font-medium text-onAccent/85 mt-0.5 truncate">
+                    Job Estimator
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex-1" />
+                <div className="hidden sm:block flex-shrink-0">
+                  <Toggle
+                    ariaLabel="View"
+                    value={view}
+                    onChange={setView}
+                    options={[
+                      { value: 'pricing', label: 'Pricing Tool' },
+                      { value: 'catalog', label: 'Catalog' },
+                    ]}
+                  />
+                </div>
 
-              <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
-                <Toggle
-                  ariaLabel="View"
-                  value={view}
-                  onChange={setView}
-                  options={[
-                    { value: 'pricing', label: 'Pricing Tool' },
-                    { value: 'catalog', label: 'Catalog' },
-                  ]}
-                />
+                <div className="flex flex-shrink-0 items-center">
                 <SettingsMenu
                   theme={theme}
                   setTheme={setTheme}
@@ -1643,6 +1692,20 @@
                   setStickyTotals={setStickyTotals}
                   pickerMode={pickerMode}
                   setPickerMode={setPickerMode}
+                />
+                </div>
+              </div>
+
+              <div className="sm:hidden mt-2">
+                <Toggle
+                  full
+                  ariaLabel="View"
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: 'pricing', label: 'Pricing Tool' },
+                    { value: 'catalog', label: 'Catalog' },
+                  ]}
                 />
               </div>
             </div>
@@ -1670,6 +1733,10 @@
         setPayMode = () => {},
       }) {
         const blank = BLANK_FORM;
+        const isWide = useIsWide();
+        // Family and Color collapse into the Item cell on a phone; the footer
+        // labels have to span the columns that remain.
+        const labelSpan = isWide ? 4 : 2;
         const compact = density === 'compact';
         const isSplitPicker = pickerMode === 'split';
         const d = {
@@ -1815,15 +1882,55 @@
 
         return (
           <div className={d.gapY}>
-            {/* KPI strip — Total Units / Total Amount / Volume tier (sticky optional) */}
+            {/* KPI strip. Two renderings, because the three cards stack at
+                phone width into a ~500px column — sticky, that covered most of
+                the screen and sat on top of the payment toggle and the tier
+                hint. Phones get one compact line with the two figures a rep
+                actually watches while scrolling; md+ keeps the full strip. */}
             <div
               className={
-                stickyTotals
-                  ? 'sticky top-0 z-30 -mx-4 sm:-mx-8 px-4 sm:px-8 py-2 bg-page/95 bg-page/95 backdrop-blur'
-                  : ''
+                'md:hidden -mx-4 px-4 ' +
+                (stickyTotals
+                  ? 'sticky top-0 z-30 py-2 bg-page/95 backdrop-blur'
+                  : '')
               }
             >
-              <div className={'grid grid-cols-1 md:grid-cols-3 ' + d.kpiGap}>
+              <Card className="px-4 py-2.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-muted font-semibold">
+                    Units
+                  </div>
+                  <div className="text-xl font-extrabold tabular-nums text-content leading-tight">
+                    {previewTotalUnits}
+                  </div>
+                </div>
+                <div className="min-w-0 text-right">
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-muted font-semibold">
+                    {isCash ? 'Cash Total' : 'Financed Total'}
+                  </div>
+                  <div className="text-xl font-extrabold tabular-nums text-brand-orange leading-tight">
+                    {fmt(isCash ? grandTerms.total : grandTotal)}
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* The tier is reference, not a running total, so on a phone it
+                stays in normal flow rather than riding along in the sticky bar. */}
+            <Card className={'md:hidden ' + kpiCardPad}>
+              <div className={kpiCardLabel}>Volume Tier</div>
+              <div className="mt-1 text-sm font-semibold text-content">
+                {tierLabel(previewTotalUnits)}
+              </div>
+            </Card>
+
+            <div
+              className={
+                'hidden md:block ' +
+                (stickyTotals ? 'sticky top-0 z-30 -mx-8 px-8 py-2 bg-page/95 backdrop-blur' : '')
+              }
+            >
+              <div className={'grid grid-cols-3 ' + d.kpiGap}>
                 <Card className={kpiCardPad}>
                   <div className={kpiCardLabel}>Total Units</div>
                   <div className={'mt-1 ' + kpiCardValue + ' text-content'}>
@@ -2016,7 +2123,7 @@
                 <div className="md:col-span-12">
                   <div
                     className={
-                      'rounded-xl bg-page bg-surface2 border border-line flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 ' +
+                      'rounded-xl bg-surface2 border border-line flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 ' +
                       (compact ? 'px-3 py-2' : 'px-4 py-3')
                     }
                   >
@@ -2047,7 +2154,7 @@
                       <button
                         onClick={addLine}
                         disabled={!form.itemId || !qtyNum}
-                        className="rounded-xl bg-brand-orange hover:brightness-110 text-onAccent px-4 py-2.5 text-sm font-bold shadow-sm disabled:bg-surface2 disabled:text-muted disabled:shadow-none disabled:cursor-not-allowed transition-colors"
+                        className="rounded-xl bg-brand-orange hover:brightness-110 text-onAccent px-4 py-2.5 text-sm font-bold shadow-sm disabled:bg-surface disabled:text-muted disabled:ring-1 disabled:ring-line disabled:shadow-none disabled:cursor-not-allowed transition-colors"
                       >
                         + Add to Job
                       </button>
@@ -2097,13 +2204,19 @@
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-surface2 text-content uppercase text-[10px] tracking-wider">
+                      {/* Header gutters track the body cells' (d.rowX) rather
+                          than a fixed px-4, so the columns line up and the
+                          numeric ones stop claiming width they don't need. */}
                       <tr>
-                        <th className="px-4 py-2 text-left">Item</th>
-                        <th className="px-4 py-2 text-left">Family</th>
-                        <th className="px-4 py-2 text-left">Color</th>
-                        <th className="px-4 py-2 text-right">Qty</th>
-                        <th className="px-4 py-2 text-right">Line Price</th>
-                        <th className="px-4 py-2"></th>
+                        <th className={d.rowX + ' py-2 text-left'}>Item</th>
+                        {isWide && <th className={d.rowX + ' py-2 text-left'}>Family</th>}
+                        {isWide && <th className={d.rowX + ' py-2 text-left'}>Color</th>}
+                        <th className={d.rowX + ' py-2 text-right whitespace-nowrap w-px'}>Qty</th>
+                        <th className={d.rowX + ' py-2 text-right whitespace-nowrap w-px'}>
+                          <span className="sm:hidden">Price</span>
+                          <span className="hidden sm:inline">Line Price</span>
+                        </th>
+                        <th className="px-2 py-2 w-px"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -2115,14 +2228,24 @@
                           <tr key={ln.key} className="hover:bg-surface2">
                             <td className={td + ' font-semibold text-content'}>
                               {item ? item.label : '—'}
+                              {!isWide && item && (
+                                <div className="mt-0.5 text-[11px] font-medium text-muted">
+                                  {item.family}
+                                  {item.tierType !== 'flat' && color ? ' · ' + color.label : ''}
+                                </div>
+                              )}
                             </td>
-                            <td className={td + ' text-muted'}>
-                              {item ? item.family : '—'}
-                            </td>
-                            <td className={td + ' text-muted'}>
-                              {!item || item.tierType === 'flat' ? '—' : color ? color.label : '—'}
-                            </td>
-                            <td className={td + ' text-right'}>
+                            {isWide && (
+                              <td className={td + ' text-muted'}>
+                                {item ? item.family : '—'}
+                              </td>
+                            )}
+                            {isWide && (
+                              <td className={td + ' text-muted'}>
+                                {!item || item.tierType === 'flat' ? '—' : color ? color.label : '—'}
+                              </td>
+                            )}
+                            <td className={td + ' text-right whitespace-nowrap'}>
                               <input
                                 type="number"
                                 min="0"
@@ -2135,13 +2258,17 @@
                                     ),
                                   );
                                 }}
-                                className="w-16 text-right tabular-nums font-medium text-content bg-transparent rounded-md px-1.5 py-1 border border-transparent hover:border-line hover:border-line hover:bg-white hover:bg-surface focus:bg-white focus:bg-surface focus:ring-2 focus:ring-brand-orange focus:outline-none focus:border-transparent"
+                                className="w-12 sm:w-16 text-right tabular-nums font-medium text-content bg-transparent rounded-md px-1.5 py-1 border border-transparent hover:border-line hover:bg-surface focus:bg-surface focus:ring-2 focus:ring-brand-orange focus:outline-none focus:border-transparent"
                               />
                             </td>
-                            <td className={td + ' text-right tabular-nums font-bold text-brand-orange'}>
+                            <td
+                              className={
+                                td + ' text-right tabular-nums font-bold text-brand-orange whitespace-nowrap'
+                              }
+                            >
                               {fmt(linePrice(item, Number(ln.qty), ln.colorKey, totalUnits))}
                             </td>
-                            <td className={td + ' text-right'}>
+                            <td className={d.rowY + ' px-2 text-right'}>
                               <button
                                 onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}
                                 className="text-muted hover:text-danger font-bold text-lg leading-none"
@@ -2160,12 +2287,12 @@
                       {savingsLines.length > 0 && (
                         <tr>
                           <td
-                            colSpan="4"
-                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-muted"
+                            colSpan={labelSpan}
+                            className={d.rowX + ' py-2 text-right text-xs uppercase tracking-wider font-semibold text-muted'}
                           >
                             Subtotal
                           </td>
-                          <td className="px-4 py-2 text-right text-sm font-bold text-content tabular-nums">
+                          <td className={d.rowX + ' py-2 text-right text-sm font-bold text-content tabular-nums whitespace-nowrap'}>
                             {fmt(jobGrossTotal)}
                           </td>
                           <td></td>
@@ -2181,12 +2308,12 @@
                           }
                         >
                           <td
-                            colSpan="4"
-                            className="px-4 py-2 text-right text-xs uppercase tracking-wider font-semibold text-positive"
+                            colSpan={labelSpan}
+                            className={d.rowX + ' py-2 text-right text-xs uppercase tracking-wider font-semibold text-positive'}
                           >
                             {sv.label}
                           </td>
-                          <td className="px-4 py-2 text-right text-sm font-extrabold text-positive tabular-nums">
+                          <td className={d.rowX + ' py-2 text-right text-sm font-extrabold text-positive tabular-nums whitespace-nowrap'}>
                             −{fmt(sv.amount)}
                           </td>
                           <td></td>
@@ -2194,12 +2321,12 @@
                       ))}
                       <tr className="border-t-2 border-line">
                         <td
-                          colSpan="4"
-                          className="px-4 py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-content"
+                          colSpan={labelSpan}
+                          className={d.rowX + ' py-3 text-right text-xs uppercase tracking-[0.2em] font-bold text-content'}
                         >
                           Total
                         </td>
-                        <td className="px-4 py-3 text-right text-lg font-extrabold text-brand-orange tabular-nums">
+                        <td className={d.rowX + ' py-3 text-right text-lg font-extrabold text-brand-orange tabular-nums whitespace-nowrap'}>
                           {fmt(displayNetTotal)}
                         </td>
                         <td></td>
@@ -2282,20 +2409,23 @@
         const headStyles = {
           accent: 'bg-brand-orange text-onAccent',
           ink: 'bg-ink text-onInk',
+          // Placeholder sections carry no real data yet, so their head sits
+          // back rather than claiming one of the two loud treatments.
+          muted: 'bg-surface2 text-muted',
         };
         const headClass = headStyles[tone] || headStyles.accent;
-        const headerPad = compact ? 'px-4 py-1.5' : 'px-5 py-2.5';
-        const thPad = compact ? 'px-3 py-1' : 'px-3 py-2';
-        const tdPad = compact ? 'px-3 py-1' : 'px-3 py-2';
+        const headerPad = compact ? 'px-3 sm:px-4 py-1.5' : 'px-4 sm:px-5 py-2.5';
+        const thPad = compact ? 'px-2 sm:px-3 py-1' : 'px-2 sm:px-3 py-2';
+        const tdPad = compact ? 'px-2 sm:px-3 py-1' : 'px-2 sm:px-3 py-2';
         return (
           <Card className="overflow-hidden">
             <div className={'font-bold tracking-tight text-sm ' + headClass + ' ' + headerPad}>
               {title}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-surface2 text-content text-[11px] uppercase tracking-wider">
+                  <tr className="bg-surface2 text-content text-[10px] sm:text-[11px] uppercase tracking-wider">
                     {headers.map((h, i) => (
                       <th key={i} className={thPad + ' ' + (i === 0 ? 'text-left' : 'text-right')}>
                         {h}
@@ -2451,7 +2581,7 @@
                     title={sec.title}
                     headers={sizeHeaders}
                     rows={sec.rows}
-                    tone={sec.placeholder ? 'muted' : 'navy'}
+                    tone={sec.placeholder ? 'muted' : 'ink'}
                     muted={sec.placeholder}
                     density={density}
                     note={sec.note}
@@ -2519,7 +2649,7 @@
         };
 
         return (
-          <div className="min-h-screen flex flex-col bg-page bg-page transition-colors">
+          <div className="min-h-screen flex flex-col bg-page transition-colors">
             <Header
               view={view}
               setView={setView}
