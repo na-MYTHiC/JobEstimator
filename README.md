@@ -35,9 +35,22 @@ financed price. Cash is a discount applied to the finished total, not a second
 price list:
 
 ```
-Cash Price        = Total x (1 - CASH_DISCOUNT_RATE)
-Cash Deal Savings = Total - Cash Price
+Cash Price        = Financed Total x (1 - CASH_DISCOUNT_RATE)
+Cash Deal Savings = Financed Total - Cash Price
 ```
+
+The quote shows **one total**, with every deduction listed above it:
+
+```
+Subtotal                 $56,355.75
+  Volume Savings         -$4,174.50
+  Cash Deal Savings      -$3,320.62
+Total                    $48,860.63
+```
+
+The cash discount is still taken off the *financed* total, not off the
+subtotal — it simply isn't printed as a total of its own. Subtotal only appears
+when something is deducted from it; with no savings the Total stands alone.
 
 The cash **price** is derived from the rate and the savings line is the
 remainder, not the other way round: the price is what the customer pays and
