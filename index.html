@@ -720,6 +720,17 @@
       // differ by one factor, so the discount is a good deal smaller than
       // reversing the whole thing. Getting that wrong under-quotes cash
       // deals badly, so re-derive it from the sheet before touching it.
+      //
+      // Confirmed with the business: ONE rate covers every family — Mezzo,
+      // Casement, Fusion, Bertha, 143 Series and both patio door ranges —
+      // and it applies to add-on options too, because the real calculation
+      // runs on the job total rather than per line. Every catalog price in
+      // this file, add-ons included, sits on the same markup, so a single
+      // rate on the total is exact rather than approximate.
+      //
+      // It must stay applied ONCE, to the finished total. Discounting each
+      // line and summing instead drifts by a cent or two on a mixed job,
+      // because each line rounds separately.
       // --------------------------------------------------------------------
       const CASH_DISCOUNT_RATE = 0.06363636363636364;
 

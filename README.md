@@ -56,6 +56,16 @@ most of that markup and differ by a single factor, so the real discount is much
 smaller than undoing the whole thing. Re-derive it from the pricing sheet
 before changing it; guessing here under-quotes cash deals by a wide margin.
 
+One rate covers **every family** — Mezzo, Casement, Fusion, Bertha, 143 Series
+and both patio door ranges — and it applies to **add-on options** as well,
+because the real calculation runs on the job total rather than per line. Every
+catalog price in the app, add-ons included, sits on that same markup, which is
+what makes a single rate on the total exact rather than approximate.
+
+It must stay applied **once, to the finished total**. Discounting each line and
+summing instead drifts by a cent or two on a mixed job, since each line rounds
+separately.
+
 The toggle sits in the Pricing Tool next to the totals rather than in Settings,
 since it gets flipped mid-appointment. It's saved with the job and **Reset**
 returns it to Finance for the next customer.
