@@ -16,7 +16,10 @@ multipliers, and a running job total.
 - **Cash / Finance toggle** — quote the same job on either terms; cash adds a
   Cash Savings line to the quote and lowers the total.
 - **Themes** — Tempest (brand orange), Ocean, Forest, Sunset, Royal, and
-  Monochrome, in both light and dark mode.
+  Monochrome, in both light and dark mode. Flat fills, no gradients, and
+  one colour per role: accent for the brand bar, prices and the primary
+  action; ink for structural headers; positive for savings; danger for
+  destructive actions.
 - **Density, sticky totals, and zoom** controls in the settings cog.
 - **Manual updates only** — the app never changes version on its own.
 
