@@ -7,10 +7,9 @@ multipliers, and a running job total.
 
 ## Features
 
-- **Pricing Tool** — add lines, edit quantities *and item names* inline, and
-  see live totals with volume savings broken out separately. Renaming a line
-  is cosmetic: pricing keys off the catalog item, and the family and colour
-  stay on show underneath so it's always clear what a line is priced as.
+- **Pricing Tool** — add lines, edit quantities inline, tap any line's name to
+  swap it for anything else in the catalog, and see live totals with volume
+  savings broken out separately. Swapping reprices and re-tiers the job.
 - **Catalog** — every par price and size limit from the master sheet, laid
   out side by side just like the spreadsheet.
 - **Volume-tier optimizer** — flags when you're a few units shy of the next
