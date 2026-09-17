@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- maximum-scale + user-scalable=no disable pinch and double-tap zoom.
+         Regular iOS Safari has ignored user-scalable since iOS 10, but a
+         standalone home-screen PWA — how the reps run this — does honour it.
+         The Zoom control in Settings replaces it, and scales the app
+         deliberately instead of leaving a half-panned viewport behind. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Job Estimator</title>
 
     <!-- PWA / iOS Add-to-Home-Screen -->
@@ -34,7 +42,7 @@
       // Everything that can pull a new build hangs off jeCheckForUpdates /
       // jeForceRefresh below, and those only run when the button is tapped.
       // ------------------------------------------------------------------
-      window.APP_VERSION = 'v1.14.1';
+      window.APP_VERSION = 'v1.15.0';
       if ('serviceWorker' in navigator && navigator.serviceWorker) {
         window.addEventListener('load', function () {
           // updateViaCache:'none' makes the browser bypass its HTTP cache
@@ -55,6 +63,18 @@
             .catch(function () {});
         });
       }
+      // Safari fires its own gesture* events for a pinch, and touch-action
+      // doesn't stop those — without this, pinch-zoom still works on iOS even
+      // with user-scalable=no. Passive:false is required or preventDefault is
+      // ignored. Scrolling is untouched; only the pinch is swallowed.
+      //
+      // Deliberately NOT paired with a touchend double-tap guard: cancelling
+      // touchend also cancels the click, so two quick taps on "+ Add to Job"
+      // would silently drop the second line. touch-action above already
+      // covers double-tap zoom.
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
+        document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
+      });
       // Called only from the Settings "Check for updates" button.
       window.jeCheckForUpdates = function () {
         if (window.__jeSwReg && window.__jeSwReg.update) {
@@ -217,21 +237,22 @@
     />
     <style>
       :root {
-        /* Tempest / light. JS overwrites the whole set on theme or mode change. */
-        --c-accent: 230 145 56;
-        --c-accent-edge: 246 178 107;
-        --c-accent-deep: 201 118 33;
+        /* Tempest / light, and this is what paints BEFORE React mounts and
+           applies the real palette — so it has to stay in step with the
+           tempest.light entry in THEMES or the app visibly flashes the wrong
+           colours on every cold start. */
+        --c-accent: 225 112 35;
         --c-on-accent: 255 255 255;
-        --c-page: 250 249 247;
+        --c-page: 247 247 250;
         --c-surface: 255 255 255;
-        --c-surface-2: 245 243 240;
-        --c-line: 232 227 221;
-        --c-content: 28 25 23;
-        --c-muted: 122 114 108;
-        --c-ink: 41 37 35;
+        --c-surface-2: 240 240 245;
+        --c-line: 227 227 236;
+        --c-content: 20 20 28;
+        --c-muted: 101 101 122;
+        --c-ink: 20 20 28;
         --c-on-ink: 255 255 255;
-        --c-positive: 5 150 105;
-        --c-danger: 200 16 46;
+        --c-positive: 12 135 94;
+        --c-danger: 239 68 68;
       }
       /* Push the header below the iOS status bar / Dynamic Island when the
          app is launched from the Home Screen (standalone PWA mode). */
@@ -244,6 +265,12 @@
       body,
       #root {
         height: 100%;
+      }
+      html,
+      body {
+        /* Allows panning, excludes pinch-zoom and double-tap-zoom. Honoured
+           by Chrome/Android and by Safari for double-tap. */
+        touch-action: pan-x pan-y;
       }
       body {
         font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;

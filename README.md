@@ -38,7 +38,9 @@ multipliers, and a running job total.
   header bar and its borders are an rgba wash. `--c-ink` goes *lighter* than
   the surface there — darker would mean pure black, which is the page, and
   the header bars would vanish.
-- **Density, sticky totals, and zoom** controls in the settings cog.
+- **Density, sticky totals, and zoom** controls in the settings cog. Zoom in
+  Settings is the only zoom: pinch and double-tap are disabled so a rep
+  can't strand the app half-panned mid-appointment.
 - **Manual updates only** — the app never changes version on its own.
 
 ## Pricing logic (mirrored from the spreadsheet)
