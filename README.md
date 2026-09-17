@@ -7,8 +7,10 @@ multipliers, and a running job total.
 
 ## Features
 
-- **Pricing Tool** — add lines, edit quantities inline, and see live totals
-  with volume savings broken out separately.
+- **Pricing Tool** — add lines, edit quantities *and item names* inline, and
+  see live totals with volume savings broken out separately. Renaming a line
+  is cosmetic: pricing keys off the catalog item, and the family and colour
+  stay on show underneath so it's always clear what a line is priced as.
 - **Catalog** — every par price and size limit from the master sheet, laid
   out side by side just like the spreadsheet.
 - **Volume-tier optimizer** — flags when you're a few units shy of the next
@@ -21,9 +23,11 @@ multipliers, and a running job total.
   Flat fills, no gradients, and one colour per role: accent for the brand
   bar, prices and the primary action; ink for structural headers; positive
   for savings; danger for destructive actions.
-- **Three modes** — Light, Dark and AMOLED (true black, for OLED screens),
-  also matching AniLog. AMOLED carries the `dark` class alongside Dark, since
-  a few `dark:` utilities in the markup depend on it.
+- **Three modes** — Light, Dark (neutral grey-black) and AMOLED (true black,
+  for OLED screens). AMOLED carries the `dark` class alongside Dark, since a
+  few `dark:` utilities in the markup depend on it. Both dark modes use
+  strictly neutral greys (R=G=B on every step); the colour lives in the
+  accent, and the two modes differ by depth rather than by hue.
 
   Surfaces and text are shared across all themes and taken from AniLog's
   `styles/base.css`, so only the accent changes between them — the same
